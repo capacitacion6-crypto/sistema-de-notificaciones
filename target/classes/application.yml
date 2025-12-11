@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: ticketero-api
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ticketero}
+    username: ${DATABASE_USERNAME:dev}
+    password: ${DATABASE_PASSWORD:dev123}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Flyway maneja el schema
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+# Telegram Configuration
+telegram:
+  bot-token: ${TELEGRAM_BOT_TOKEN:}
+  api-url: https://api.telegram.org/bot
+
+# Actuator Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# Logging
+logging:
+  level:
+    com.example.ticketero: INFO
+    org.springframework: WARN
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
