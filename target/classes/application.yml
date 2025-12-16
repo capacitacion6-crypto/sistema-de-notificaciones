@@ -1,22 +1,25 @@
 spring:
   application:
     name: ticketero-api
-
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ticketero}
     username: ${DATABASE_USERNAME:dev}
     password: ${DATABASE_PASSWORD:dev123}
     driver-class-name: org.postgresql.Driver
-
+  
   jpa:
     hibernate:
-      ddl-auto: validate  # Flyway maneja el schema
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
-
+  
   flyway:
     enabled: true
     baseline-on-migrate: true
@@ -27,7 +30,7 @@ telegram:
   bot-token: ${TELEGRAM_BOT_TOKEN:}
   api-url: https://api.telegram.org/bot
 
-# Actuator Endpoints
+# Actuator Configuration
 management:
   endpoints:
     web:
@@ -37,7 +40,7 @@ management:
     health:
       show-details: when-authorized
 
-# Logging
+# Logging Configuration
 logging:
   level:
     com.example.ticketero: INFO

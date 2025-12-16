@@ -1,0 +1,9 @@
+spring:
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    com.example.ticketero: INFO
+    org.springframework: WARN
+    org.hibernate.SQL: WARN

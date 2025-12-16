@@ -1,0 +1,46 @@
+### Crear ticket para Caja
+POST http://localhost:8080/api/tickets
+Content-Type: application/json
+
+{
+  "customerRut": "12345678-9",
+  "customerPhone": "+56912345678",
+  "queueType": "CAJA"
+}
+
+### Crear ticket para Personal Banker
+POST http://localhost:8080/api/tickets
+Content-Type: application/json
+
+{
+  "customerRut": "87654321-0",
+  "customerPhone": "+56987654321",
+  "queueType": "PERSONAL_BANKER"
+}
+
+### Obtener ticket por UUID (reemplazar con UUID real)
+GET http://localhost:8080/api/tickets/550e8400-e29b-41d4-a716-446655440000
+
+### Consultar posición en cola (reemplazar con número real)
+GET http://localhost:8080/api/tickets/C123456/position
+
+### Obtener todos los asesores
+GET http://localhost:8080/api/admin/advisors
+
+### Cambiar estado de asesor a AVAILABLE
+PUT http://localhost:8080/api/admin/advisors/1/status?status=AVAILABLE
+
+### Cambiar estado de asesor a BUSY
+PUT http://localhost:8080/api/admin/advisors/1/status?status=BUSY
+
+### Completar ticket
+POST http://localhost:8080/api/admin/tickets/1/complete
+
+### Procesar asignaciones manualmente
+POST http://localhost:8080/api/admin/assignments/process
+
+### Dashboard completo
+GET http://localhost:8080/api/admin/dashboard
+
+### Health check
+GET http://localhost:8080/actuator/health

@@ -1,1303 +1,568 @@
-# Plan Detallado de Implementación - Sistema Ticketero
+# Plan Detallado de Implementación - Sistema Ticketero Digital
 
 **Proyecto:** Sistema de Gestión de Tickets con Notificaciones en Tiempo Real  
 **Versión:** 1.0  
 **Fecha:** Diciembre 2025  
-**Tech Lead:** Tech Lead Senior  
-**Tiempo Estimado:** 11 horas (3 días)
+**Líder Técnico:** Desarrollador Senior
 
 ---
 
-## 1. Introducción
+## 1. Resumen Ejecutivo
 
-### 1.1 Propósito
+Este documento presenta el plan detallado de implementación del Sistema Ticketero Digital, estructurado en **8 sprints de 1 semana cada uno** para completar el desarrollo en **2 meses**.
 
-Este documento proporciona un plan de implementación paso a paso para construir el Sistema Ticketero Digital completo. Cualquier desarrollador mid-level puede seguir este plan sin necesidad de consultar documentación adicional.
+El plan sigue una metodología ágil con entregas incrementales, priorizando funcionalidades core primero y características avanzadas después. Cada sprint incluye desarrollo, testing y documentación.
 
-### 1.2 Objetivo
-
-Implementar un sistema funcional que cumpla con:
-- ✅ 8 Requerimientos Funcionales (RF-001 a RF-008)
-- ✅ 13 Reglas de Negocio (RN-001 a RN-013)
-- ✅ 11 Endpoints HTTP operativos
-- ✅ Procesamiento asíncrono con schedulers
-- ✅ Integración completa con Telegram Bot API
-
-### 1.3 Stack Tecnológico
-
-- **Backend:** Java 21 + Spring Boot 3.2.11
-- **Base de Datos:** PostgreSQL 16
-- **Migraciones:** Flyway
-- **Build Tool:** Maven 3.9+
-- **Containerización:** Docker + Docker Compose
-- **Integración:** Telegram Bot HTTP API
-
-### 1.4 Tiempo Estimado
-
-**Total: 11 horas distribuidas en 3 días**
-- Día 1: 4 horas (Setup + Migraciones + Entities + DTOs + Repositories)
-- Día 2: 5 horas (Services + Controllers)
-- Día 3: 2 horas (Schedulers + Testing E2E)
+**Cronograma Total:** 8 semanas  
+**Metodología:** Scrum con sprints de 1 semana  
+**Equipo:** 2-3 desarrolladores + 1 QA + 1 DevOps
 
 ---
 
-## 2. Estructura Completa del Proyecto
+## 2. Estructura del Proyecto
+
+### 2.1 Arquitectura de Paquetes
 
 ```
-ticketero/
-├── pom.xml                                    # Maven configuration
-├── .env                                       # Variables de entorno (gitignored)
-├── docker-compose.yml                         # PostgreSQL + API
-├── Dockerfile                                 # Multi-stage build
-├── README.md                                  # Instrucciones del proyecto
-│
-├── src/
-│   ├── main/
-│   │   ├── java/com/example/ticketero/
-│   │   │   │
-│   │   │   ├── TicketeroApplication.java    # Main class con @EnableScheduling
-│   │   │   │
-│   │   │   ├── controller/                   # REST Controllers
-│   │   │   │   ├── TicketController.java
-│   │   │   │   └── AdminController.java
-│   │   │   │
-│   │   │   ├── service/                      # Business Logic
-│   │   │   │   ├── TicketService.java
-│   │   │   │   ├── TelegramService.java
-│   │   │   │   ├── QueueManagementService.java
-│   │   │   │   ├── AdvisorService.java
-│   │   │   │   └── NotificationService.java
-│   │   │   │
-│   │   │   ├── repository/                   # Data Access
-│   │   │   │   ├── TicketRepository.java
-│   │   │   │   ├── MensajeRepository.java
-│   │   │   │   └── AdvisorRepository.java
-│   │   │   │
-│   │   │   ├── model/
-│   │   │   │   ├── entity/                   # JPA Entities
-│   │   │   │   │   ├── Ticket.java
-│   │   │   │   │   ├── Mensaje.java
-│   │   │   │   │   └── Advisor.java
-│   │   │   │   │
-│   │   │   │   ├── dto/                      # DTOs
-│   │   │   │   │   ├── TicketCreateRequest.java
-│   │   │   │   │   ├── TicketResponse.java
-│   │   │   │   │   ├── QueuePositionResponse.java
-│   │   │   │   │   ├── DashboardResponse.java
-│   │   │   │   │   └── QueueStatusResponse.java
-│   │   │   │   │
-│   │   │   │   └── enums/                    # Enumerations
-│   │   │   │       ├── QueueType.java
-│   │   │   │       ├── TicketStatus.java
-│   │   │   │       ├── AdvisorStatus.java
-│   │   │   │       └── MessageTemplate.java
-│   │   │   │
-│   │   │   ├── scheduler/                    # Scheduled Tasks
-│   │   │   │   ├── MensajeScheduler.java
-│   │   │   │   └── QueueProcessorScheduler.java
-│   │   │   │
-│   │   │   ├── config/                       # Configuration
-│   │   │   │   ├── RestTemplateConfig.java
-│   │   │   │   └── TelegramConfig.java
-│   │   │   │
-│   │   │   └── exception/                    # Exception Handling
-│   │   │       ├── TicketNotFoundException.java
-│   │   │       ├── TicketActivoExistenteException.java
-│   │   │       └── GlobalExceptionHandler.java
-│   │   │
-│   │   └── resources/
-│   │       ├── application.yml               # Spring Boot config
-│   │       ├── application-dev.yml           # Dev profile
-│   │       ├── application-prod.yml          # Prod profile
-│   │       │
-│   │       └── db/migration/                 # Flyway migrations
-│   │           ├── V1__create_ticket_table.sql
-│   │           ├── V2__create_mensaje_table.sql
-│   │           └── V3__create_advisor_table.sql
-│   │
-│   └── test/
-│       └── java/com/example/ticketero/
-│           ├── service/
-│           │   ├── TicketServiceTest.java
-│           │   └── TelegramServiceTest.java
-│           │
-│           └── controller/
-│               └── TicketControllerTest.java
-│
-└── docs/                                      # Documentación
-    ├── project-requirements.md
-    ├── REQUERIMIENTOS-FUNCIONALES.md
-    ├── ARQUITECTURA.md
-    ├── PLAN-IMPLEMENTACION.md
-    └── diagrams/
-        ├── 01-context-diagram.puml
-        ├── 02-sequence-diagram.puml
-        └── 03-er-diagram.puml
+src/main/java/com/example/ticketero/
+├── controller/           # @RestController - Capa de presentación
+│   ├── TicketController.java
+│   └── AdminController.java
+├── service/             # @Service - Lógica de negocio
+│   ├── TicketService.java
+│   ├── TelegramService.java
+│   ├── QueueManagementService.java
+│   ├── AdvisorService.java
+│   └── NotificationService.java
+├── repository/          # @Repository - Acceso a datos
+│   ├── TicketRepository.java
+│   ├── MensajeRepository.java
+│   └── AdvisorRepository.java
+├── model/
+│   ├── entity/          # @Entity - JPA entities
+│   │   ├── Ticket.java
+│   │   ├── Mensaje.java
+│   │   └── Advisor.java
+│   └── dto/             # Records - Request/Response DTOs
+│       ├── request/
+│       │   ├── TicketRequest.java
+│       │   └── AdvisorStatusRequest.java
+│       └── response/
+│           ├── TicketResponse.java
+│           ├── QueuePositionResponse.java
+│           └── DashboardResponse.java
+├── scheduler/           # @Scheduled - Procesamiento asíncrono
+│   ├── MessageScheduler.java
+│   └── QueueProcessorScheduler.java
+├── config/              # @Configuration - Configuración
+│   ├── TelegramConfig.java
+│   └── SchedulingConfig.java
+├── exception/           # Manejo de errores
+│   ├── TicketNotFoundException.java
+│   ├── DuplicateActiveTicketException.java
+│   └── GlobalExceptionHandler.java
+└── util/                # Utilidades
+    ├── TicketNumberGenerator.java
+    └── QueueCalculator.java
+```
+
+### 2.2 Recursos de Base de Datos
+
+```
+src/main/resources/
+├── application.yml      # Configuración Spring Boot
+├── application-dev.yml  # Profile desarrollo
+├── application-prod.yml # Profile producción
+└── db/migration/        # Migraciones Flyway
+    ├── V1__create_tables.sql
+    ├── V2__create_indexes.sql
+    └── V3__insert_sample_data.sql
 ```
 
 ---
 
-## 3. Configuración Inicial del Proyecto
-
-### 3.1 pom.xml (Maven Configuration)
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
-         https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.11</version>
-        <relativePath/>
-    </parent>
-
-    <groupId>com.example</groupId>
-    <artifactId>ticketero</artifactId>
-    <version>1.0.0</version>
-    <name>Ticketero API</name>
-    <description>Sistema de Gestión de Tickets con Notificaciones en Tiempo Real</description>
-
-    <properties>
-        <java.version>21</java.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-    </properties>
-
-    <dependencies>
-        <!-- Spring Boot Starters -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-
-        <!-- PostgreSQL Driver -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- Flyway for Database Migrations -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-        </dependency>
-
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- Testing -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-</project>
-```
-
-### 3.2 application.yml
-
-```yaml
-spring:
-  application:
-    name: ticketero-api
-
-  datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ticketero}
-    username: ${DATABASE_USERNAME:dev}
-    password: ${DATABASE_PASSWORD:dev123}
-    driver-class-name: org.postgresql.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: validate  # Flyway maneja el schema
-    show-sql: false
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    locations: classpath:db/migration
-
-# Telegram Configuration
-telegram:
-  bot-token: ${TELEGRAM_BOT_TOKEN}
-  api-url: https://api.telegram.org/bot
-
-# Actuator Endpoints
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics
-  endpoint:
-    health:
-      show-details: when-authorized
-
-# Logging
-logging:
-  level:
-    com.example.ticketero: INFO
-    org.springframework: WARN
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-```
-
-### 3.3 .env (Template)
-
-```env
-# Telegram Bot Configuration
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
-
-# Database Configuration
-DATABASE_URL=jdbc:postgresql://localhost:5432/ticketero
-DATABASE_USERNAME=dev
-DATABASE_PASSWORD=dev123
-
-# Spring Profile
-SPRING_PROFILES_ACTIVE=dev
-```
-
-### 3.4 docker-compose.yml
-
-```yaml
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: ticketero-db
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: ticketero
-      POSTGRES_USER: dev
-      POSTGRES_PASSWORD: dev123
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dev -d ticketero"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: ticketero-api
-    ports:
-      - "8080:8080"
-    environment:
-      DATABASE_URL: jdbc:postgresql://postgres:5432/ticketero
-      DATABASE_USERNAME: dev
-      DATABASE_PASSWORD: dev123
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      SPRING_PROFILES_ACTIVE: dev
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-    driver: local
-```
-
-### 3.5 Dockerfile (Multi-stage)
-
-```dockerfile
-# Stage 1: Build
-FROM maven:3.9-eclipse-temurin-21 AS build
-WORKDIR /app
-
-# Copy pom.xml and download dependencies (for caching)
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
-
-# Copy source code and build
-COPY src ./src
-RUN mvn clean package -DskipTests
-
-# Stage 2: Runtime
-FROM eclipse-temurin:21-jre-alpine
-WORKDIR /app
-
-# Copy jar from build stage
-COPY --from=build /app/target/*.jar app.jar
-
-# Expose port
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
-
-# Run application
-ENTRYPOINT ["java", "-jar", "app.jar"]
-```
-
----
-
-## 4. Migraciones de Base de Datos (Flyway)
-
-### 4.1 V1__create_ticket_table.sql
-
-```sql
--- V1__create_ticket_table.sql
--- Tabla principal de tickets
-
-CREATE TABLE ticket (
-    id BIGSERIAL PRIMARY KEY,
-    codigo_referencia UUID NOT NULL UNIQUE,
-    numero VARCHAR(10) NOT NULL UNIQUE,
-    national_id VARCHAR(20) NOT NULL,
-    telefono VARCHAR(20),
-    branch_office VARCHAR(100) NOT NULL,
-    queue_type VARCHAR(20) NOT NULL,
-    status VARCHAR(20) NOT NULL,
-    position_in_queue INTEGER NOT NULL,
-    estimated_wait_minutes INTEGER NOT NULL,
-    assigned_advisor_id BIGINT,
-    assigned_module_number INTEGER,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- Índices para performance
-CREATE INDEX idx_ticket_status ON ticket(status);
-CREATE INDEX idx_ticket_national_id ON ticket(national_id);
-CREATE INDEX idx_ticket_queue_type ON ticket(queue_type);
-CREATE INDEX idx_ticket_created_at ON ticket(created_at DESC);
-
--- Comentarios para documentación
-COMMENT ON TABLE ticket IS 'Tickets de atención en sucursales';
-COMMENT ON COLUMN ticket.codigo_referencia IS 'UUID único para referencias externas';
-COMMENT ON COLUMN ticket.numero IS 'Número visible del ticket (C01, P15, etc.)';
-COMMENT ON COLUMN ticket.position_in_queue IS 'Posición actual en cola (calculada en tiempo real)';
-COMMENT ON COLUMN ticket.estimated_wait_minutes IS 'Tiempo estimado de espera en minutos';
-```
-
-### 4.2 V2__create_mensaje_table.sql
-
-```sql
--- V2__create_mensaje_table.sql
--- Tabla de mensajes programados para Telegram
-
-CREATE TABLE mensaje (
-    id BIGSERIAL PRIMARY KEY,
-    ticket_id BIGINT NOT NULL,
-    plantilla VARCHAR(50) NOT NULL,
-    estado_envio VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
-    fecha_programada TIMESTAMP NOT NULL,
-    fecha_envio TIMESTAMP,
-    telegram_message_id VARCHAR(50),
-    intentos INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT fk_mensaje_ticket 
-        FOREIGN KEY (ticket_id) 
-        REFERENCES ticket(id) 
-        ON DELETE CASCADE
-);
-
--- Índices para performance del scheduler
-CREATE INDEX idx_mensaje_estado_fecha ON mensaje(estado_envio, fecha_programada);
-CREATE INDEX idx_mensaje_ticket_id ON mensaje(ticket_id);
-
--- Comentarios
-COMMENT ON TABLE mensaje IS 'Mensajes programados para envío vía Telegram';
-COMMENT ON COLUMN mensaje.plantilla IS 'Tipo de mensaje: totem_ticket_creado, totem_proximo_turno, totem_es_tu_turno';
-COMMENT ON COLUMN mensaje.estado_envio IS 'Estado: PENDIENTE, ENVIADO, FALLIDO';
-COMMENT ON COLUMN mensaje.intentos IS 'Cantidad de reintentos de envío';
-```
-
-### 4.3 V3__create_advisor_table.sql
-
-```sql
--- V3__create_advisor_table.sql
--- Tabla de asesores/ejecutivos
-
-CREATE TABLE advisor (
-    id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    status VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE',
-    module_number INTEGER NOT NULL,
-    assigned_tickets_count INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT chk_module_number CHECK (module_number BETWEEN 1 AND 5),
-    CONSTRAINT chk_assigned_count CHECK (assigned_tickets_count >= 0)
-);
-
--- Índice para búsqueda de asesores disponibles
-CREATE INDEX idx_advisor_status ON advisor(status);
-CREATE INDEX idx_advisor_module ON advisor(module_number);
-
--- Foreign key de ticket a advisor (se agrega ahora que advisor existe)
-ALTER TABLE ticket
-    ADD CONSTRAINT fk_ticket_advisor 
-    FOREIGN KEY (assigned_advisor_id) 
-    REFERENCES advisor(id) 
-    ON DELETE SET NULL;
-
--- Datos iniciales: 5 asesores
-INSERT INTO advisor (name, email, status, module_number) VALUES
-    ('María González', 'maria.gonzalez@institucion.cl', 'AVAILABLE', 1),
-    ('Juan Pérez', 'juan.perez@institucion.cl', 'AVAILABLE', 2),
-    ('Ana Silva', 'ana.silva@institucion.cl', 'AVAILABLE', 3),
-    ('Carlos Rojas', 'carlos.rojas@institucion.cl', 'AVAILABLE', 4),
-    ('Patricia Díaz', 'patricia.diaz@institucion.cl', 'AVAILABLE', 5);
-
--- Comentarios
-COMMENT ON TABLE advisor IS 'Asesores/ejecutivos que atienden clientes';
-COMMENT ON COLUMN advisor.status IS 'Estado: AVAILABLE, BUSY, OFFLINE';
-COMMENT ON COLUMN advisor.module_number IS 'Número de módulo de atención (1-5)';
-COMMENT ON COLUMN advisor.assigned_tickets_count IS 'Cantidad de tickets actualmente asignados';
-```
-
----
-
-## 5. Implementación por Fases
-
-### Fase 0: Setup del Proyecto (30 minutos)
-
-**Objetivo:** Configurar el proyecto base y verificar que compila
-
-**Tareas:**
-- [ ] Crear proyecto Maven con estructura de carpetas
-- [ ] Configurar pom.xml con todas las dependencias
-- [ ] Crear application.yml con configuración base
-- [ ] Crear .env con variables de entorno
-- [ ] Crear docker-compose.yml para PostgreSQL
-- [ ] Levantar base de datos: `docker-compose up -d postgres`
-- [ ] Crear clase principal TicketeroApplication.java con @SpringBootApplication y @EnableScheduling
-- [ ] Verificar compilación: `mvn clean compile`
-- [ ] Verificar que conecta a BD: `mvn spring-boot:run`
+## 3. Cronograma de Sprints
+
+### Sprint 1: Fundación del Proyecto (Semana 1)
+**Objetivo:** Establecer la base del proyecto con configuración inicial y modelo de datos
+
+**Historias de Usuario:**
+- Como desarrollador, necesito la estructura base del proyecto configurada
+- Como desarrollador, necesito las entidades JPA creadas y migraciones funcionando
+- Como desarrollador, necesito la configuración de Spring Boot operativa
+
+**Tareas Técnicas:**
+1. **Configuración Inicial (2 días)**
+   - Crear proyecto Maven con Spring Boot 3.2.11
+   - Configurar dependencias (Spring Data JPA, PostgreSQL, Flyway, Validation)
+   - Configurar application.yml con profiles (dev/prod)
+   - Configurar Docker Compose para desarrollo
+
+2. **Modelo de Datos (2 días)**
+   - Crear entidades JPA: Ticket, Mensaje, Advisor
+   - Implementar enumeraciones: QueueType, TicketStatus, AdvisorStatus, MessageTemplate
+   - Crear migraciones Flyway: V1__create_tables.sql
+   - Crear índices: V2__create_indexes.sql
+
+3. **Repositories Base (1 día)**
+   - Implementar TicketRepository, MensajeRepository, AdvisorRepository
+   - Queries básicas con Spring Data JPA
+   - Tests unitarios de repositories
 
 **Criterios de Aceptación:**
 - ✅ Proyecto compila sin errores
-- ✅ Aplicación inicia y conecta a PostgreSQL
-- ✅ Logs muestran: "Started TicketeroApplication"
-- ✅ Actuator health endpoint responde: `curl http://localhost:8080/actuator/health`
+- ✅ Base de datos se crea automáticamente con Flyway
+- ✅ Tests de repositories pasan
+- ✅ Docker Compose levanta PostgreSQL + API
 
-**Ejemplo de TicketeroApplication.java:**
-```java
-package com.example.ticketero;
-
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
-
-@SpringBootApplication
-@EnableScheduling
-public class TicketeroApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(TicketeroApplication.class, args);
-    }
-}
-```
+**Entregables:**
+- Proyecto base configurado
+- Entidades JPA funcionando
+- Migraciones de BD ejecutándose
+- README.md con instrucciones de setup
 
 ---
 
-### Fase 1: Migraciones y Enumeraciones (45 minutos)
+### Sprint 2: API Core - Creación de Tickets (Semana 2)
+**Objetivo:** Implementar RF-001 (Crear Ticket Digital) con validaciones completas
 
-**Objetivo:** Crear esquema de base de datos y enumeraciones Java
+**Historias de Usuario:**
+- Como cliente, quiero crear un ticket digital ingresando mi RUT y seleccionando servicio
+- Como sistema, necesito validar que un cliente no tenga tickets activos (RN-001)
+- Como sistema, necesito generar números de ticket únicos (RN-005, RN-006)
 
-**Tareas:**
-- [ ] Crear V1__create_ticket_table.sql
-- [ ] Crear V2__create_mensaje_table.sql
-- [ ] Crear V3__create_advisor_table.sql
-- [ ] Crear enum QueueType.java
-- [ ] Crear enum TicketStatus.java
-- [ ] Crear enum AdvisorStatus.java
-- [ ] Crear enum MessageTemplate.java
-- [ ] Reiniciar aplicación y verificar migraciones
-- [ ] Verificar tablas creadas: `\dt` en psql
-- [ ] Verificar datos iniciales: `SELECT * FROM advisor;`
+**Tareas Técnicas:**
+1. **DTOs y Validaciones (1 día)**
+   - Crear TicketRequest record con Bean Validation
+   - Crear TicketResponse record
+   - Implementar validaciones: @NotBlank, @Pattern, @Valid
+
+2. **Lógica de Negocio (2 días)**
+   - Implementar TicketService.crearTicket()
+   - Validar RN-001: único ticket activo por cliente
+   - Implementar TicketNumberGenerator (RN-005, RN-006)
+   - Implementar QueueCalculator para posición y tiempo estimado (RN-010)
+
+3. **Controller y API (1 día)**
+   - Implementar TicketController.crearTicket()
+   - Endpoint POST /api/tickets
+   - Manejo de errores con @ControllerAdvice
+
+4. **Testing (1 día)**
+   - Tests unitarios de TicketService
+   - Tests de integración del endpoint
+   - Tests de validaciones
 
 **Criterios de Aceptación:**
-- ✅ Flyway ejecuta las 3 migraciones exitosamente
-- ✅ Tabla flyway_schema_history muestra 3 versiones
-- ✅ Tablas ticket, mensaje, advisor existen
-- ✅ 5 asesores iniciales insertados en advisor
-- ✅ 4 enums creadas con valores correctos
+- ✅ POST /api/tickets crea ticket exitosamente
+- ✅ Valida RN-001: rechaza si cliente tiene ticket activo (HTTP 409)
+- ✅ Genera número correcto según tipo de cola (C01, P15, etc.)
+- ✅ Calcula posición y tiempo estimado correctamente
+- ✅ Retorna HTTP 201 con TicketResponse válido
 
-**Ejemplo de Enum:**
-```java
-package com.example.ticketero.model.enums;
-
-public enum QueueType {
-    CAJA("Caja", 5, 1),
-    PERSONAL_BANKER("Personal Banker", 15, 2),
-    EMPRESAS("Empresas", 20, 3),
-    GERENCIA("Gerencia", 30, 4);
-
-    private final String displayName;
-    private final int avgTimeMinutes;
-    private final int priority;
-
-    QueueType(String displayName, int avgTimeMinutes, int priority) {
-        this.displayName = displayName;
-        this.avgTimeMinutes = avgTimeMinutes;
-        this.priority = priority;
-    }
-
-    public String getDisplayName() { return displayName; }
-    public int getAvgTimeMinutes() { return avgTimeMinutes; }
-    public int getPriority() { return priority; }
-}
-```
+**Entregables:**
+- Endpoint POST /api/tickets funcional
+- Validaciones de negocio implementadas
+- Suite de tests completa
+- Documentación de API (Swagger)
 
 ---
 
-### Fase 2: Entities (1 hora)
+### Sprint 3: Integración con Telegram (Semana 3)
+**Objetivo:** Implementar TelegramService y programación de mensajes
 
-**Objetivo:** Crear las 3 entidades JPA mapeadas a las tablas
+**Historias de Usuario:**
+- Como sistema, necesito enviar mensajes a Telegram Bot API
+- Como sistema, necesito programar 3 mensajes por ticket creado
+- Como sistema, necesito manejar fallos de envío con reintentos (RN-007, RN-008)
 
-**Tareas:**
-- [ ] Crear Ticket.java con todas las anotaciones JPA
-- [ ] Crear Mensaje.java con relación a Ticket
-- [ ] Crear Advisor.java con relación a Ticket
-- [ ] Usar Lombok: @Data, @NoArgsConstructor, @AllArgsConstructor, @Builder
-- [ ] Mapear enums con @Enumerated(EnumType.STRING)
-- [ ] Configurar relaciones: @OneToMany, @ManyToOne
-- [ ] Agregar @PrePersist para codigo_referencia UUID
-- [ ] Compilar y verificar sin errores
+**Tareas Técnicas:**
+1. **Configuración Telegram (1 día)**
+   - Crear TelegramConfig con RestTemplate
+   - Configurar telegram.bot-token en application.yml
+   - Implementar TelegramService.enviarMensaje()
+
+2. **Plantillas de Mensajes (1 día)**
+   - Implementar generación de texto por plantilla
+   - Mensajes con emojis y formato HTML
+   - Plantillas: totem_ticket_creado, totem_proximo_turno, totem_es_tu_turno
+
+3. **Programación de Mensajes (2 días)**
+   - Modificar TicketService para crear 3 mensajes programados
+   - Implementar MessageScheduler con @Scheduled(fixedRate = 60000)
+   - Lógica de reintentos con backoff exponencial (RN-008)
+
+4. **Testing y Simulación (1 día)**
+   - Tests unitarios de TelegramService
+   - Mock de Telegram API para tests
+   - Tests de MessageScheduler
 
 **Criterios de Aceptación:**
-- ✅ 3 entities creadas con anotaciones JPA correctas
-- ✅ Relaciones bidireccionales configuradas
-- ✅ Proyecto compila sin errores
-- ✅ Hibernate valida el schema al iniciar (no crea tablas por ddl-auto=validate)
+- ✅ TelegramService envía mensajes exitosamente
+- ✅ Al crear ticket se programan 3 mensajes automáticamente
+- ✅ MessageScheduler procesa mensajes cada 60 segundos
+- ✅ Reintentos funcionan según RN-007 y RN-008
+- ✅ Mensajes fallidos se marcan como FALLIDO después de 3 intentos
 
-**Ejemplo de Entity:**
-```java
-package com.example.ticketero.model.entity;
-
-import com.example.ticketero.model.enums.QueueType;
-import com.example.ticketero.model.enums.TicketStatus;
-import jakarta.persistence.*;
-import lombok.*;
-import java.time.LocalDateTime;
-import java.util.UUID;
-
-@Entity
-@Table(name = "ticket")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Ticket {
-    
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "codigo_referencia", nullable = false, unique = true)
-    private UUID codigoReferencia;
-
-    @Column(name = "numero", nullable = false, unique = true, length = 10)
-    private String numero;
-
-    @Column(name = "national_id", nullable = false, length = 20)
-    private String nationalId;
-
-    @Column(name = "telefono", length = 20)
-    private String telefono;
-
-    @Column(name = "branch_office", nullable = false, length = 100)
-    private String branchOffice;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "queue_type", nullable = false, length = 20)
-    private QueueType queueType;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private TicketStatus status;
-
-    @Column(name = "position_in_queue", nullable = false)
-    private Integer positionInQueue;
-
-    @Column(name = "estimated_wait_minutes", nullable = false)
-    private Integer estimatedWaitMinutes;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_advisor_id")
-    private Advisor assignedAdvisor;
-
-    @Column(name = "assigned_module_number")
-    private Integer assignedModuleNumber;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        codigoReferencia = UUID.randomUUID();
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-}
-```
+**Entregables:**
+- TelegramService funcional
+- MessageScheduler operativo
+- Plantillas de mensajes implementadas
+- Tests de integración con Telegram (mocked)
 
 ---
 
-### Fase 3: DTOs (45 minutos)
+### Sprint 4: Gestión de Colas y Asesores (Semana 4)
+**Objetivo:** Implementar RF-004 (Asignación Automática) y RF-005 (Múltiples Colas)
 
-**Objetivo:** Crear DTOs para request/response
+**Historias de Usuario:**
+- Como sistema, necesito asignar tickets automáticamente a asesores disponibles
+- Como sistema, necesito respetar prioridades de colas (RN-002)
+- Como sistema, necesito balancear carga entre asesores (RN-004)
 
-**Tareas:**
-- [ ] Crear TicketCreateRequest.java con Bean Validation
-- [ ] Crear TicketResponse.java como record
-- [ ] Crear QueuePositionResponse.java
-- [ ] Crear DashboardResponse.java
-- [ ] Crear QueueStatusResponse.java
-- [ ] Agregar validaciones: @NotBlank, @NotNull, @Pattern
-- [ ] Compilar y verificar
+**Tareas Técnicas:**
+1. **AdvisorService (1 día)**
+   - Implementar CRUD de asesores
+   - Métodos: findAvailableAdvisors(), updateStatus()
+   - Lógica de balanceo de carga (assignedTicketsCount)
+
+2. **QueueManagementService (2 días)**
+   - Implementar asignarSiguienteTicket()
+   - Lógica de prioridades (RN-002): GERENCIA > EMPRESAS > PERSONAL_BANKER > CAJA
+   - Orden FIFO dentro de cada cola (RN-003)
+   - Actualización de estados: ticket → ATENDIENDO, advisor → BUSY
+
+3. **QueueProcessorScheduler (1 día)**
+   - Implementar @Scheduled(fixedRate = 5000) // cada 5 segundos
+   - Recálculo de posiciones en tiempo real
+   - Detección de tickets con posición ≤ 3 → status PROXIMO (RN-012)
+
+4. **Testing (1 día)**
+   - Tests de QueueManagementService
+   - Tests de prioridades y balanceo
+   - Tests de QueueProcessorScheduler
 
 **Criterios de Aceptación:**
-- ✅ 5 DTOs creados
-- ✅ Validaciones Bean Validation configuradas
-- ✅ Records usados donde sea apropiado (inmutabilidad)
+- ✅ Asignación automática funciona cada 5 segundos
+- ✅ Respeta prioridades de colas (GERENCIA primero)
+- ✅ Balancea carga entre asesores disponibles
+- ✅ Actualiza posiciones en tiempo real
+- ✅ Marca tickets como PROXIMO cuando posición ≤ 3
 
-**Ejemplo de DTO:**
-```java
-package com.example.ticketero.model.dto;
-
-import com.example.ticketero.model.enums.QueueType;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-
-public record TicketCreateRequest(
-    
-    @NotBlank(message = "El RUT/ID es obligatorio")
-    String nationalId,
-    
-    @Pattern(regexp = "^\\+56[0-9]{9}$", message = "Teléfono debe tener formato +56XXXXXXXXX")
-    String telefono,
-    
-    @NotBlank(message = "La sucursal es obligatoria")
-    String branchOffice,
-    
-    @NotNull(message = "El tipo de cola es obligatorio")
-    QueueType queueType
-) {}
-```
+**Entregables:**
+- QueueManagementService completo
+- QueueProcessorScheduler operativo
+- AdvisorService funcional
+- Tests de asignación automática
 
 ---
 
-### Fase 4: Repositories (30 minutos)
+### Sprint 5: API de Consultas (Semana 5)
+**Objetivo:** Implementar RF-003 (Consultar Posición) y RF-006 (Estado del Ticket)
 
-**Objetivo:** Crear interfaces de acceso a datos
+**Historias de Usuario:**
+- Como cliente, quiero consultar la posición actual de mi ticket
+- Como cliente, quiero ver el estado actualizado de mi ticket
+- Como sistema, necesito calcular posiciones en tiempo real
 
-**Tareas:**
-- [ ] Crear TicketRepository.java extends JpaRepository
-- [ ] Crear MensajeRepository.java
-- [ ] Crear AdvisorRepository.java
-- [ ] Agregar queries custom con @Query
-- [ ] Métodos: findByCodigoReferencia, findByNationalIdAndStatusIn, etc.
+**Tareas Técnicas:**
+1. **DTOs de Consulta (1 día)**
+   - Crear QueuePositionResponse record
+   - Crear TicketStatusResponse record
+   - Validaciones para consultas por UUID y número
+
+2. **Endpoints de Consulta (2 días)**
+   - GET /api/tickets/{uuid} - Obtener ticket completo
+   - GET /api/tickets/{numero}/position - Consultar posición
+   - Implementar cálculo de posición en tiempo real
+   - Manejo de tickets no encontrados (HTTP 404)
+
+3. **Optimización de Queries (1 día)**
+   - Queries optimizadas para cálculo de posiciones
+   - Índices en campos de búsqueda frecuente
+   - Cache de posiciones (opcional)
+
+4. **Testing (1 día)**
+   - Tests de endpoints de consulta
+   - Tests de cálculo de posiciones
+   - Tests de performance
 
 **Criterios de Aceptación:**
-- ✅ 3 repositories creados
-- ✅ Queries custom documentadas
-- ✅ Proyecto compila
+- ✅ GET /api/tickets/{uuid} retorna ticket completo
+- ✅ GET /api/tickets/{numero}/position retorna posición actual
+- ✅ Posiciones se calculan en tiempo real
+- ✅ Maneja correctamente tickets no encontrados
+- ✅ Response time < 1 segundo para consultas
 
-**Ejemplo:**
-```java
-package com.example.ticketero.repository;
-
-import com.example.ticketero.model.entity.Ticket;
-import com.example.ticketero.model.enums.TicketStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-@Repository
-public interface TicketRepository extends JpaRepository<Ticket, Long> {
-
-    Optional<Ticket> findByCodigoReferencia(UUID codigoReferencia);
-
-    Optional<Ticket> findByNumero(String numero);
-
-    @Query("SELECT t FROM Ticket t WHERE t.nationalId = :nationalId AND t.status IN :statuses")
-    Optional<Ticket> findByNationalIdAndStatusIn(
-        @Param("nationalId") String nationalId, 
-        @Param("statuses") List<TicketStatus> statuses
-    );
-
-    @Query("SELECT t FROM Ticket t WHERE t.status = :status ORDER BY t.createdAt ASC")
-    List<Ticket> findByStatusOrderByCreatedAtAsc(@Param("status") TicketStatus status);
-}
-```
+**Entregables:**
+- Endpoints de consulta funcionales
+- Cálculo de posiciones optimizado
+- Tests de performance
+- Documentación de API actualizada
 
 ---
 
-### Fase 5: Services (3 horas)
+### Sprint 6: Panel Administrativo (Semana 6)
+**Objetivo:** Implementar RF-007 (Dashboard) y funciones administrativas
 
-**Objetivo:** Implementar toda la lógica de negocio
+**Historias de Usuario:**
+- Como supervisor, quiero ver un dashboard con estado de todas las colas
+- Como supervisor, quiero ver la lista de asesores y su estado
+- Como supervisor, quiero cambiar el estado de los asesores
 
-**Orden de Implementación:**
-1. TelegramService (sin dependencias)
-2. AdvisorService (solo repository)
-3. TicketService (usa TelegramService)
-4. QueueManagementService (usa TicketService, AdvisorService)
-5. NotificationService (usa TelegramService)
+**Tareas Técnicas:**
+1. **DTOs del Dashboard (1 día)**
+   - Crear DashboardResponse record
+   - Crear QueueSummaryResponse record
+   - Crear AdvisorSummaryResponse record
 
-**Tareas:**
-- [ ] Crear TelegramService.java (envío de mensajes)
-- [ ] Crear TicketService.java (crear ticket, calcular posición)
-- [ ] Crear QueueManagementService.java (asignación automática)
-- [ ] Crear AdvisorService.java (gestión de asesores)
-- [ ] Crear NotificationService.java (coordinar notificaciones)
-- [ ] Implementar lógica según RN-001 a RN-013
-- [ ] Agregar @Transactional donde corresponda
-- [ ] Logging con @Slf4j
+2. **AdminController (2 días)**
+   - GET /api/admin/dashboard - Dashboard completo
+   - GET /api/admin/queues/{type} - Estado de cola específica
+   - GET /api/admin/advisors - Lista de asesores
+   - PUT /api/admin/advisors/{id}/status - Cambiar estado asesor
+
+3. **Lógica del Dashboard (1 día)**
+   - Agregaciones de tickets por estado y cola
+   - Cálculo de métricas: tiempo promedio, tickets en espera
+   - Actualización cada 5 segundos (RNF-002)
+
+4. **Testing (1 día)**
+   - Tests de AdminController
+   - Tests de métricas y agregaciones
+   - Tests de cambio de estado de asesores
 
 **Criterios de Aceptación:**
-- ✅ 5 services implementados
-- ✅ Reglas de negocio RN-001 a RN-013 aplicadas
-- ✅ Transacciones configuradas correctamente
-- ✅ Tests unitarios básicos pasan
+- ✅ Dashboard muestra resumen completo de operación
+- ✅ Métricas se actualizan cada 5 segundos
+- ✅ Permite cambiar estado de asesores
+- ✅ Muestra alertas si cola > 15 personas
+- ✅ Interface administrativa funcional
 
-**Ejemplo de Service:**
-```java
-package com.example.ticketero.service;
-
-import com.example.ticketero.model.dto.TicketCreateRequest;
-import com.example.ticketero.model.dto.TicketResponse;
-import com.example.ticketero.model.entity.Ticket;
-import com.example.ticketero.model.enums.TicketStatus;
-import com.example.ticketero.repository.TicketRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-
-@Service
-@RequiredArgsConstructor
-@Slf4j
-@Transactional(readOnly = true)
-public class TicketService {
-
-    private final TicketRepository ticketRepository;
-    private final MensajeRepository mensajeRepository;
-
-    @Transactional
-    public TicketResponse crearTicket(TicketCreateRequest request) {
-        log.info("Creando ticket para nationalId: {}", request.nationalId());
-
-        // RN-001: Validar ticket activo existente
-        validarTicketActivoExistente(request.nationalId());
-
-        // Generar número según RN-005, RN-006
-        String numero = generarNumeroTicket(request.queueType());
-
-        // Calcular posición según RN-010
-        int posicion = calcularPosicionEnCola(request.queueType());
-        int tiempoEstimado = calcularTiempoEstimado(posicion, request.queueType());
-
-        // Crear y guardar ticket
-        Ticket ticket = Ticket.builder()
-            .nationalId(request.nationalId())
-            .telefono(request.telefono())
-            .branchOffice(request.branchOffice())
-            .queueType(request.queueType())
-            .status(TicketStatus.EN_ESPERA)
-            .positionInQueue(posicion)
-            .estimatedWaitMinutes(tiempoEstimado)
-            .build();
-
-        ticket = ticketRepository.save(ticket);
-
-        // Programar 3 mensajes (si hay teléfono)
-        if (request.telefono() != null && !request.telefono().isBlank()) {
-            programarMensajes(ticket);
-        }
-
-        log.info("Ticket creado: {}", ticket.getNumero());
-
-        return toResponse(ticket);
-    }
-
-    private void validarTicketActivoExistente(String nationalId) {
-        List<TicketStatus> estadosActivos = List.of(
-            TicketStatus.EN_ESPERA, 
-            TicketStatus.PROXIMO, 
-            TicketStatus.ATENDIENDO
-        );
-        
-        ticketRepository.findByNationalIdAndStatusIn(nationalId, estadosActivos)
-            .ifPresent(t -> {
-                throw new TicketActivoExistenteException(
-                    "Ya tienes un ticket activo: " + t.getNumero()
-                );
-            });
-    }
-
-    // ... otros métodos privados
-}
-```
+**Entregables:**
+- AdminController completo
+- Dashboard con métricas en tiempo real
+- Funciones administrativas
+- Tests de panel administrativo
 
 ---
 
-### Fase 6: Controllers (2 horas)
+### Sprint 7: Auditoría y Logging (Semana 7)
+**Objetivo:** Implementar RF-008 (Auditoría) y logging completo
 
-**Objetivo:** Exponer API REST
+**Historias de Usuario:**
+- Como sistema, necesito registrar todos los eventos críticos (RN-011)
+- Como administrador, quiero logs detallados para debugging
+- Como auditor, necesito trazabilidad completa de operaciones
 
-**Endpoints a Implementar:**
+**Tareas Técnicas:**
+1. **Sistema de Auditoría (2 días)**
+   - Crear entidad AuditLog
+   - Implementar AuditService
+   - Registrar eventos: creación, asignación, completado, cambios de estado
+   - Migración para tabla de auditoría
 
-**TicketController:**
-- POST /api/tickets - Crear ticket
-- GET /api/tickets/{uuid} - Obtener ticket
-- GET /api/tickets/{numero}/position - Consultar posición
-- GET /api/health - Health check
+2. **Logging Estructurado (1 día)**
+   - Configurar Logback con formato JSON
+   - Logs por nivel: ERROR, WARN, INFO, DEBUG
+   - Correlation IDs para trazabilidad
+   - Logs sin datos sensibles
 
-**AdminController:**
-- GET /api/admin/dashboard - Dashboard completo
-- GET /api/admin/queues/{type} - Estado de cola
-- GET /api/admin/queues/{type}/stats - Estadísticas
-- GET /api/admin/advisors - Lista asesores
-- GET /api/admin/advisors/stats - Estadísticas asesores
-- PUT /api/admin/advisors/{id}/status - Cambiar estado
-- GET /api/admin/summary - Resumen ejecutivo
+3. **Métricas y Monitoreo (1 día)**
+   - Spring Boot Actuator endpoints
+   - Health checks personalizados
+   - Métricas de performance
+   - Preparación para Prometheus
 
-**Tareas:**
-- [ ] Crear TicketController.java (endpoints públicos)
-- [ ] Crear AdminController.java (endpoints administrativos)
-- [ ] Configurar @RestController, @RequestMapping
-- [ ] Usar @Valid para validación automática
-- [ ] ResponseEntity con códigos HTTP apropiados
-- [ ] Crear GlobalExceptionHandler.java para errores
+4. **Testing (1 día)**
+   - Tests de auditoría
+   - Tests de logging
+   - Tests de health checks
 
 **Criterios de Aceptación:**
-- ✅ 11 endpoints implementados
-- ✅ Validación automática funciona
-- ✅ Manejo de errores centralizado
-- ✅ Códigos HTTP correctos (200, 201, 400, 404, 409)
+- ✅ Todos los eventos críticos se auditan
+- ✅ Logs estructurados y sin datos sensibles
+- ✅ Health checks funcionan correctamente
+- ✅ Métricas disponibles vía Actuator
+- ✅ Trazabilidad completa de operaciones
 
-**Ejemplo:**
-```java
-package com.example.ticketero.controller;
-
-import com.example.ticketero.model.dto.TicketCreateRequest;
-import com.example.ticketero.model.dto.TicketResponse;
-import com.example.ticketero.service.TicketService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.UUID;
-
-@RestController
-@RequestMapping("/api/tickets")
-@RequiredArgsConstructor
-@Slf4j
-public class TicketController {
-
-    private final TicketService ticketService;
-
-    @PostMapping
-    public ResponseEntity<TicketResponse> crearTicket(
-        @Valid @RequestBody TicketCreateRequest request
-    ) {
-        log.info("POST /api/tickets - Creando ticket para {}", request.nationalId());
-        
-        TicketResponse response = ticketService.crearTicket(request);
-        
-        return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(response);
-    }
-
-    @GetMapping("/{codigoReferencia}")
-    public ResponseEntity<TicketResponse> obtenerTicket(
-        @PathVariable UUID codigoReferencia
-    ) {
-        log.info("GET /api/tickets/{}", codigoReferencia);
-        
-        TicketResponse response = ticketService.obtenerTicketPorCodigo(codigoReferencia);
-        
-        return ResponseEntity.ok(response);
-    }
-}
-```
+**Entregables:**
+- Sistema de auditoría completo
+- Logging estructurado
+- Health checks y métricas
+- Tests de auditoría y monitoreo
 
 ---
 
-### Fase 7: Schedulers (1.5 horas)
+### Sprint 8: Testing Final y Deployment (Semana 8)
+**Objetivo:** Testing integral, optimización y preparación para producción
 
-**Objetivo:** Implementar procesamiento asíncrono
+**Historias de Usuario:**
+- Como usuario, necesito que el sistema sea confiable y performante
+- Como DevOps, necesito el sistema listo para deployment en producción
+- Como QA, necesito cobertura de tests completa
 
-**Tareas:**
-- [ ] Crear MensajeScheduler.java (@Scheduled fixedRate=60000)
-- [ ] Crear QueueProcessorScheduler.java (@Scheduled fixedRate=5000)
-- [ ] Configurar @EnableScheduling en clase principal
-- [ ] Implementar lógica de reintentos (RN-007, RN-008)
-- [ ] Implementar asignación automática (RN-002, RN-003, RN-004)
-- [ ] Logging detallado
+**Tareas Técnicas:**
+1. **Testing Integral (2 días)**
+   - Tests de integración end-to-end
+   - Tests de carga con JMeter
+   - Tests de concurrencia
+   - Cobertura de código > 80%
+
+2. **Optimización (1 día)**
+   - Optimización de queries SQL
+   - Tuning de connection pools
+   - Optimización de schedulers
+   - Performance profiling
+
+3. **Deployment (1 día)**
+   - Dockerfile optimizado (multi-stage build)
+   - docker-compose para producción
+   - Scripts de deployment
+   - Configuración de variables de entorno
+
+4. **Documentación (1 día)**
+   - README completo
+   - Documentación de API (OpenAPI/Swagger)
+   - Manual de deployment
+   - Troubleshooting guide
 
 **Criterios de Aceptación:**
-- ✅ MensajeScheduler procesa mensajes pendientes cada 60s
-- ✅ QueueProcessorScheduler asigna tickets cada 5s
-- ✅ Reintentos funcionan (30s, 60s, 120s backoff)
-- ✅ Asignación respeta prioridades y FIFO
+- ✅ Cobertura de tests > 80%
+- ✅ Performance tests pasan (< 3s creación ticket)
+- ✅ Sistema soporta 25,000 tickets/día
+- ✅ Deployment automatizado funciona
+- ✅ Documentación completa
 
-**Ejemplo:**
-```java
-package com.example.ticketero.scheduler;
-
-import com.example.ticketero.model.entity.Mensaje;
-import com.example.ticketero.repository.MensajeRepository;
-import com.example.ticketero.service.TelegramService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
-
-@Component
-@RequiredArgsConstructor
-@Slf4j
-public class MensajeScheduler {
-
-    private final MensajeRepository mensajeRepository;
-    private final TelegramService telegramService;
-
-    @Scheduled(fixedRate = 60000) // Cada 60 segundos
-    @Transactional
-    public void procesarMensajesPendientes() {
-        LocalDateTime ahora = LocalDateTime.now();
-
-        List<Mensaje> mensajesPendientes = mensajeRepository
-            .findByEstadoEnvioAndFechaProgramadaLessThanEqual("PENDIENTE", ahora);
-
-        if (mensajesPendientes.isEmpty()) {
-            log.debug("No hay mensajes pendientes");
-            return;
-        }
-
-        log.info("Procesando {} mensajes pendientes", mensajesPendientes.size());
-
-        for (Mensaje mensaje : mensajesPendientes) {
-            try {
-                enviarMensaje(mensaje);
-            } catch (Exception e) {
-                log.error("Error procesando mensaje {}: {}", mensaje.getId(), e.getMessage());
-            }
-        }
-    }
-
-    private void enviarMensaje(Mensaje mensaje) {
-        // Implementación de envío con manejo de reintentos (RN-007, RN-008)
-    }
-}
-```
+**Entregables:**
+- Sistema completo y testeado
+- Deployment automatizado
+- Documentación completa
+- Sistema listo para producción
 
 ---
 
-## 6. Orden de Ejecución Recomendado
+## 4. Definición de Terminado (DoD)
 
-### Día 1 (4 horas):
-```
-├── Fase 0: Setup (30 min)
-├── Fase 1: Migraciones (45 min)
-├── Fase 2: Entities (1 hora)
-├── Fase 3: DTOs (45 min)
-└── Fase 4: Repositories (30 min)
-```
+Para cada sprint, una funcionalidad se considera terminada cuando:
 
-### Día 2 (5 horas):
-```
-├── Fase 5: Services (3 horas)
-├── Fase 6: Controllers (2 horas)
-```
+### 4.1 Código
+- ✅ Código implementado según estándares del proyecto
+- ✅ Code review aprobado por senior developer
+- ✅ Sin code smells críticos (SonarQube)
+- ✅ Documentación de código (JavaDoc)
 
-### Día 3 (2 horas):
-```
-└── Fase 7: Schedulers (1.5 horas)
-└── Testing E2E (30 min)
-```
+### 4.2 Testing
+- ✅ Tests unitarios escritos y pasando
+- ✅ Tests de integración escritos y pasando
+- ✅ Cobertura de código > 70% por sprint
+- ✅ Tests de regresión pasando
 
-**TOTAL: ~11 horas de implementación**
+### 4.3 Funcionalidad
+- ✅ Criterios de aceptación cumplidos
+- ✅ Demo funcional completada
+- ✅ Validación por Product Owner
+- ✅ No bugs críticos pendientes
 
----
-
-## 7. Comandos Útiles
-
-### 7.1 Maven
-```bash
-# Compilar
-mvn clean compile
-
-# Ejecutar tests
-mvn test
-
-# Empaquetar (sin tests)
-mvn clean package -DskipTests
-
-# Ejecutar aplicación
-mvn spring-boot:run
-```
-
-### 7.2 Docker
-```bash
-# Levantar PostgreSQL solo
-docker-compose up -d postgres
-
-# Ver logs
-docker-compose logs -f postgres
-
-# Levantar todo (PostgreSQL + API)
-docker-compose up --build
-
-# Detener y limpiar
-docker-compose down -v
-```
-
-### 7.3 PostgreSQL
-```bash
-# Conectar a base de datos
-docker exec -it ticketero-db psql -U dev -d ticketero
-
-# Ver tablas
-\dt
-
-# Ver migraciones
-SELECT * FROM flyway_schema_history;
-
-# Ver asesores
-SELECT * FROM advisor;
-```
-
-### 7.4 Testing Manual
-```bash
-# Health check
-curl http://localhost:8080/actuator/health
-
-# Crear ticket
-curl -X POST http://localhost:8080/api/tickets \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nationalId": "12345678-9",
-    "telefono": "+56912345678",
-    "branchOffice": "Sucursal Centro",
-    "queueType": "PERSONAL_BANKER"
-  }' | jq
-
-# Obtener dashboard
-curl http://localhost:8080/api/admin/dashboard | jq
-```
+### 4.4 Deployment
+- ✅ Funcionalidad deployada en ambiente de desarrollo
+- ✅ Smoke tests pasando en dev
+- ✅ Configuración documentada
+- ✅ Rollback plan definido
 
 ---
 
-## 8. Troubleshooting
+## 5. Riesgos y Mitigaciones
 
-### 8.1 Problemas Comunes
+### 5.1 Riesgos Técnicos
 
-**Error: "Failed to configure a DataSource"**
-```
-Solución: Verificar que PostgreSQL esté corriendo y las variables de entorno estén configuradas
-Comando: docker-compose up -d postgres
-```
+| Riesgo | Probabilidad | Impacto | Mitigación |
+|--------|--------------|---------|------------|
+| Integración Telegram falla | Media | Alto | Mock service + tests, fallback manual |
+| Performance de BD insuficiente | Baja | Medio | Índices optimizados, connection pooling |
+| Concurrencia en asignación | Media | Alto | Locks optimistas, tests de concurrencia |
+| Schedulers no escalan | Baja | Medio | Configuración ajustable, monitoreo |
 
-**Error: "Flyway migration failed"**
-```
-Solución: Limpiar base de datos y reiniciar migraciones
-Comando: docker-compose down -v && docker-compose up -d postgres
-```
+### 5.2 Riesgos de Proyecto
 
-**Error: "Port 8080 already in use"**
-```
-Solución: Cambiar puerto en application.yml o matar proceso
-Comando: lsof -ti:8080 | xargs kill -9
-```
-
-**Error: "Telegram Bot Token invalid"**
-```
-Solución: Verificar token en .env y reiniciar aplicación
-Verificar: curl https://api.telegram.org/bot<TOKEN>/getMe
-```
-
-### 8.2 Logs Importantes
-
-**Inicio exitoso:**
-```
-Started TicketeroApplication in X.XXX seconds
-Flyway Community Edition X.X.X by Redgate
-Successfully applied 3 migrations
-```
-
-**Scheduler funcionando:**
-```
-Procesando X mensajes pendientes
-Asignando ticket P05 a asesor María González
-```
+| Riesgo | Probabilidad | Impacto | Mitigación |
+|--------|--------------|---------|------------|
+| Requerimientos cambian | Alta | Medio | Sprints cortos, feedback continuo |
+| Desarrollador se enferma | Media | Alto | Documentación detallada, pair programming |
+| Ambiente de desarrollo falla | Baja | Alto | Docker Compose, backup de configuración |
+| Retraso en testing | Media | Medio | Testing paralelo al desarrollo |
 
 ---
 
-## 9. Checklist Final de Validación
+## 6. Métricas de Éxito
 
-### 9.1 Funcionalidad Core
-- [ ] ✅ Crear ticket: POST /api/tickets retorna 201
-- [ ] ✅ Consultar ticket: GET /api/tickets/{uuid} retorna 200
-- [ ] ✅ Dashboard: GET /api/admin/dashboard retorna métricas
-- [ ] ✅ Asignación automática funciona cada 5s
-- [ ] ✅ Mensajes Telegram se programan correctamente
+### 6.1 Métricas Técnicas
+- **Cobertura de código:** > 80%
+- **Performance:** Creación de ticket < 3 segundos
+- **Disponibilidad:** > 99.5% durante horario de atención
+- **Throughput:** Soportar 25,000 tickets/día
 
-### 9.2 Base de Datos
-- [ ] ✅ 3 migraciones Flyway ejecutadas
-- [ ] ✅ 5 asesores iniciales insertados
-- [ ] ✅ Índices creados para performance
-- [ ] ✅ Foreign keys configuradas correctamente
+### 6.2 Métricas de Calidad
+- **Bugs críticos:** 0 en producción
+- **Code smells:** < 5 críticos por sprint
+- **Deuda técnica:** < 2 horas por sprint
+- **Documentación:** 100% de APIs documentadas
 
-### 9.3 Reglas de Negocio
-- [ ] ✅ RN-001: Un cliente solo puede tener 1 ticket activo
-- [ ] ✅ RN-002: Prioridades de cola respetadas
-- [ ] ✅ RN-005/RN-006: Formato de número correcto (C01, P15, etc.)
-- [ ] ✅ RN-007/RN-008: Reintentos con backoff exponencial
-- [ ] ✅ RN-010: Cálculo de tiempo estimado correcto
-
-### 9.4 Performance
-- [ ] ✅ Creación de ticket < 3 segundos
-- [ ] ✅ Dashboard actualiza cada 5 segundos
-- [ ] ✅ Queries optimizadas con índices
-- [ ] ✅ Transacciones configuradas apropiadamente
-
-### 9.5 Monitoreo
-- [ ] ✅ Actuator health endpoint funciona
-- [ ] ✅ Logs estructurados y legibles
-- [ ] ✅ Métricas de aplicación disponibles
-- [ ] ✅ Auditoría de eventos registrada
+### 6.3 Métricas de Proceso
+- **Velocity:** Estable entre sprints
+- **Sprint completion:** > 90% de historias completadas
+- **Defect escape rate:** < 5% bugs llegan a producción
+- **Time to market:** 8 semanas exactas
 
 ---
 
-## 10. Próximos Pasos
+## 7. Recursos y Dependencias
 
-### 10.1 Después de la Implementación
-1. **Testing Exhaustivo:** Ejecutar todos los escenarios Gherkin
-2. **Performance Testing:** Validar con carga de 500+ tickets
-3. **Security Review:** Implementar autenticación para endpoints admin
-4. **Monitoring:** Configurar alertas y dashboards de monitoreo
-5. **Documentation:** Generar documentación API con Swagger
+### 7.1 Equipo Requerido
+- **Tech Lead:** 1 persona (100% dedicación)
+- **Desarrolladores:** 2 personas (100% dedicación)
+- **QA Engineer:** 1 persona (50% dedicación)
+- **DevOps:** 1 persona (25% dedicación)
 
-### 10.2 Mejoras Futuras
-1. **WebSocket:** Notificaciones en tiempo real para dashboard
-2. **Cache:** Redis para mejorar performance de consultas
-3. **Metrics:** Prometheus + Grafana para monitoreo avanzado
-4. **CI/CD:** Pipeline automatizado con GitHub Actions
-5. **Multi-tenancy:** Soporte para múltiples sucursales
+### 7.2 Infraestructura
+- **Desarrollo:** Docker + PostgreSQL local
+- **Testing:** Ambiente dedicado con BD separada
+- **CI/CD:** GitHub Actions o Jenkins
+- **Monitoreo:** Spring Boot Actuator + logs
 
----
-
-## 11. Recursos Adicionales
-
-### 11.1 Documentación de Referencia
-- [Spring Boot 3.2.11 Documentation](https://docs.spring.io/spring-boot/docs/3.2.11/reference/html/)
-- [Telegram Bot API](https://core.telegram.org/bots/api)
-- [Flyway Documentation](https://flywaydb.org/documentation/)
-- [PostgreSQL 16 Documentation](https://www.postgresql.org/docs/16/)
-
-### 11.2 Herramientas Recomendadas
-- **IDE:** IntelliJ IDEA o VS Code con Java Extension Pack
-- **Database Client:** DBeaver o pgAdmin
-- **API Testing:** Postman o Insomnia
-- **Monitoring:** Docker Desktop para containers
+### 7.3 Dependencias Externas
+- **Telegram Bot Token:** Requerido para Sprint 3
+- **Ambiente de producción:** Definido para Sprint 8
+- **Acceso a BD producción:** Para migraciones finales
+- **Certificados SSL:** Para deployment HTTPS
 
 ---
 
-**Documento completado exitosamente**  
-**Total de páginas:** 45-50  
-**Total de palabras:** ~11,000  
-**Fecha de finalización:** Diciembre 2025
+## 8. Plan de Comunicación
 
-**Preparado por:** Tech Lead Senior  
-**Revisado por:** Arquitecto de Software  
-**Aprobado para:** Implementación Inmediata
+### 8.1 Ceremonias Scrum
+- **Daily Standup:** Lunes a Viernes 9:00 AM (15 min)
+- **Sprint Planning:** Lunes inicio de sprint (2 horas)
+- **Sprint Review:** Viernes fin de sprint (1 hora)
+- **Sprint Retrospective:** Viernes fin de sprint (1 hora)
+
+### 8.2 Reportes
+- **Burndown Chart:** Actualizado diariamente
+- **Velocity Chart:** Revisado cada sprint
+- **Quality Report:** Semanal (cobertura, bugs, performance)
+- **Risk Assessment:** Bi-semanal
+
+### 8.3 Stakeholders
+- **Product Owner:** Revisión semanal de funcionalidades
+- **Arquitecto:** Revisión técnica cada 2 sprints
+- **Usuario Final:** Demo cada 2 sprints
+- **Management:** Reporte ejecutivo semanal
 
 ---
 
-*Este plan de implementación está diseñado para ser ejecutado paso a paso por un desarrollador mid-level sin necesidad de consultar documentación adicional. Cada fase es independiente y verificable, garantizando un desarrollo incremental y controlado del Sistema Ticketero Digital.*
+**PLAN DE IMPLEMENTACIÓN COMPLETADO**
+
+**Duración Total:** 8 semanas  
+**Metodología:** Scrum ágil  
+**Entrega:** Sistema completo listo para producción  
+**Próximo paso:** Inicio de Sprint 1 - Fundación del Proyecto
