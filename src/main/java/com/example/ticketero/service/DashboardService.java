@@ -2,6 +2,9 @@ package com.example.ticketero.service;
 
 import com.example.ticketero.model.dto.response.*;
 import com.example.ticketero.model.entity.*;
+import com.example.ticketero.model.enums.AdvisorStatus;
+import com.example.ticketero.model.enums.QueueType;
+import com.example.ticketero.model.enums.TicketStatus;
 import com.example.ticketero.repository.AdvisorRepository;
 import com.example.ticketero.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
@@ -56,9 +59,9 @@ public class DashboardService {
             .toList();
 
         int totalToday = todayTickets.size();
-        int waiting = (int) todayTickets.stream().filter(t -> t.getStatus() == TicketStatus.WAITING).count();
-        int inProgress = (int) todayTickets.stream().filter(t -> t.getStatus() == TicketStatus.ASSIGNED || t.getStatus() == TicketStatus.IN_PROGRESS).count();
-        int completed = (int) todayTickets.stream().filter(t -> t.getStatus() == TicketStatus.COMPLETED).count();
+        int waiting = (int) todayTickets.stream().filter(t -> t.getStatus() == TicketStatus.EN_ESPERA).count();
+        int inProgress = (int) todayTickets.stream().filter(t -> t.getStatus() == TicketStatus.PROXIMO || t.getStatus() == TicketStatus.ATENDIENDO).count();
+        int completed = (int) todayTickets.stream().filter(t -> t.getStatus() == TicketStatus.COMPLETADO).count();
 
         List<Advisor> allAdvisors = advisorRepository.findAll();
         int available = (int) allAdvisors.stream().filter(a -> a.getStatus() == AdvisorStatus.AVAILABLE).count();
@@ -80,7 +83,7 @@ public class DashboardService {
     }
 
     private QueueStats calculateQueueStat(QueueType queueType) {
-        long waiting = ticketRepository.countByStatusAndQueueType(TicketStatus.WAITING, queueType);
+        long waiting = ticketRepository.countByStatusAndQueueType(TicketStatus.EN_ESPERA, queueType);
         long available = advisorRepository.countByStatusAndQueueType(AdvisorStatus.AVAILABLE, queueType);
         long busy = advisorRepository.countByStatusAndQueueType(AdvisorStatus.BUSY, queueType);
 
@@ -103,7 +106,7 @@ public class DashboardService {
 
         // Check for critical queues (>15 waiting)
         Arrays.stream(QueueType.values()).forEach(queueType -> {
-            long waiting = ticketRepository.countByStatusAndQueueType(TicketStatus.WAITING, queueType);
+            long waiting = ticketRepository.countByStatusAndQueueType(TicketStatus.EN_ESPERA, queueType);
             if (waiting > 15) {
                 alerts.add(new AlertResponse(
                     "CRITICAL_QUEUE",
@@ -132,7 +135,7 @@ public class DashboardService {
         // Check for long wait times
         boolean longWaitTimes = Arrays.stream(QueueType.values())
             .anyMatch(qt -> {
-                long waiting = ticketRepository.countByStatusAndQueueType(TicketStatus.WAITING, qt);
+                long waiting = ticketRepository.countByStatusAndQueueType(TicketStatus.EN_ESPERA, qt);
                 long available = advisorRepository.countByStatusAndQueueType(AdvisorStatus.AVAILABLE, qt);
                 return available == 0 && waiting > 5;
             });

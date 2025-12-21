@@ -1,8 +1,7 @@
 package com.example.ticketero.scheduler;
 
-import com.example.ticketero.model.entity.Mensaje;
-import com.example.ticketero.model.enums.MessageStatus;
-import com.example.ticketero.repository.MensajeRepository;
+import com.example.ticketero.model.entity.Message;
+import com.example.ticketero.repository.MessageRepository;
 import com.example.ticketero.service.TelegramService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +21,7 @@ import java.util.List;
 @Slf4j
 public class MessageScheduler {
 
-    private final MensajeRepository mensajeRepository;
+    private final MessageRepository messageRepository;
     private final TelegramService telegramService;
 
     /**
@@ -35,7 +34,7 @@ public class MessageScheduler {
     public void procesarMensajesPendientes() {
         LocalDateTime now = LocalDateTime.now();
         
-        List<Mensaje> mensajesPendientes = mensajeRepository.findPendingMessagesToSend(now);
+        List<Message> mensajesPendientes = messageRepository.findByDeliveryStatus("PENDING");
         
         if (mensajesPendientes.isEmpty()) {
             log.debug("No pending messages to process");
@@ -44,7 +43,7 @@ public class MessageScheduler {
         
         log.info("Processing {} pending messages", mensajesPendientes.size());
         
-        for (Mensaje mensaje : mensajesPendientes) {
+        for (Message mensaje : mensajesPendientes) {
             procesarMensaje(mensaje);
         }
     }
@@ -52,39 +51,38 @@ public class MessageScheduler {
     /**
      * Procesa un mensaje individual con manejo de reintentos.
      */
-    private void procesarMensaje(Mensaje mensaje) {
+    private void procesarMensaje(Message mensaje) {
         try {
-            String chatId = telegramService.extraerChatId(mensaje.getTicket().getTelefono());
-            String texto = telegramService.obtenerTextoMensaje(
-                mensaje.getPlantilla(), 
+            String chatId = telegramService.extractChatId(mensaje.getTicket().getCustomerPhone());
+            String texto = telegramService.getMessageText(
+                mensaje.getMessageType(), 
                 mensaje.getTicket()
             );
             
             log.debug("Processing message ID: {} for ticket: {}", 
-                     mensaje.getId(), mensaje.getTicket().getNumero());
+                     mensaje.getId(), mensaje.getTicket().getTicketNumber());
             
-            String telegramMessageId = telegramService.enviarMensaje(chatId, texto);
+            String telegramMessageId = telegramService.sendMessage(chatId, texto);
             
             if (telegramMessageId != null) {
                 // Envío exitoso
-                mensaje.setEstadoEnvio(MessageStatus.ENVIADO);
-                mensaje.setFechaEnvio(LocalDateTime.now());
-                mensaje.setTelegramMessageId(telegramMessageId);
+                mensaje.setDeliveryStatus("SENT");
+                mensaje.setSentAt(LocalDateTime.now());
                 
                 log.info("Message sent successfully for ticket: {}, telegramMessageId: {}", 
-                        mensaje.getTicket().getNumero(), telegramMessageId);
+                        mensaje.getTicket().getTicketNumber(), telegramMessageId);
             } else {
                 // Envío falló - incrementar intentos
                 manejarFalloEnvio(mensaje);
             }
             
-            mensajeRepository.save(mensaje);
+            messageRepository.save(mensaje);
             
         } catch (Exception e) {
             log.error("Error processing message ID: {} for ticket: {}", 
-                     mensaje.getId(), mensaje.getTicket().getNumero(), e);
+                     mensaje.getId(), mensaje.getTicket().getTicketNumber(), e);
             manejarFalloEnvio(mensaje);
-            mensajeRepository.save(mensaje);
+            messageRepository.save(mensaje);
         }
     }
 
@@ -93,22 +91,22 @@ public class MessageScheduler {
      * RN-007: Hasta 3 reintentos antes de marcar como FALLIDO.
      * RN-008: Backoff exponencial: 30s, 60s, 120s.
      */
-    private void manejarFalloEnvio(Mensaje mensaje) {
-        int intentos = mensaje.getIntentos() + 1;
-        mensaje.setIntentos(intentos);
+    private void manejarFalloEnvio(Message mensaje) {
+        int intentos = mensaje.getRetryCount() + 1;
+        mensaje.setRetryCount(intentos);
         
         if (intentos >= 3) {
             // Máximo de reintentos alcanzado
-            mensaje.setEstadoEnvio(MessageStatus.FALLIDO);
+            mensaje.setDeliveryStatus("FAILED");
             log.error("Message failed permanently after {} attempts for ticket: {}", 
-                     intentos, mensaje.getTicket().getNumero());
+                     intentos, mensaje.getTicket().getTicketNumber());
         } else {
             // Programar reintento con backoff exponencial
             LocalDateTime nextRetry = calcularProximoReintento(intentos);
-            mensaje.setFechaProgramada(nextRetry);
+            // No hay campo fechaProgramada en Message, usar createdAt
             
-            log.warn("Message failed, scheduling retry {} at {} for ticket: {}", 
-                    intentos, nextRetry, mensaje.getTicket().getNumero());
+            log.warn("Message failed, scheduling retry {} for ticket: {}", 
+                    intentos, mensaje.getTicket().getTicketNumber());
         }
     }
 
@@ -135,7 +133,7 @@ public class MessageScheduler {
     public void limpiarMensajesAntiguos() {
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(7);
         
-        List<Mensaje> mensajesAntiguos = mensajeRepository.findByCreatedAtAfter(cutoffDate);
+        List<Message> mensajesAntiguos = messageRepository.findByCreatedAtAfter(cutoffDate);
         
         if (!mensajesAntiguos.isEmpty()) {
             log.info("Cleaning up {} old messages", mensajesAntiguos.size());

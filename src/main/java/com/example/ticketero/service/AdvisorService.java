@@ -2,9 +2,9 @@ package com.example.ticketero.service;
 
 import com.example.ticketero.model.dto.response.AdvisorResponse;
 import com.example.ticketero.model.entity.Advisor;
-import com.example.ticketero.model.entity.AdvisorStatus;
 import com.example.ticketero.model.entity.Ticket;
-import com.example.ticketero.model.entity.TicketStatus;
+import com.example.ticketero.model.enums.AdvisorStatus;
+import com.example.ticketero.model.enums.TicketStatus;
 import com.example.ticketero.repository.AdvisorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,7 +60,7 @@ public class AdvisorService {
     private AdvisorResponse toResponse(Advisor advisor) {
         Ticket currentTicket = advisor.getTickets()
             .stream()
-            .filter(t -> t.getStatus() == TicketStatus.ASSIGNED || t.getStatus() == TicketStatus.IN_PROGRESS)
+            .filter(t -> t.getStatus() == TicketStatus.PROXIMO || t.getStatus() == TicketStatus.ATENDIENDO)
             .findFirst()
             .orElse(null);
 

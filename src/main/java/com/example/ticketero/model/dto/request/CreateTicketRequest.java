@@ -1,6 +1,6 @@
 package com.example.ticketero.model.dto.request;
 
-import com.example.ticketero.model.entity.QueueType;
+import com.example.ticketero.model.enums.QueueType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;

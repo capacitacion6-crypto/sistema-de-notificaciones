@@ -4,6 +4,9 @@ import com.example.ticketero.model.dto.request.CreateTicketRequest;
 import com.example.ticketero.model.dto.response.QueuePositionResponse;
 import com.example.ticketero.model.dto.response.TicketResponse;
 import com.example.ticketero.model.entity.*;
+import com.example.ticketero.model.enums.AdvisorStatus;
+import com.example.ticketero.model.enums.QueueType;
+import com.example.ticketero.model.enums.TicketStatus;
 import com.example.ticketero.repository.AdvisorRepository;
 import com.example.ticketero.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
@@ -75,12 +78,12 @@ public class TicketService {
     }
 
     private void updateQueuePosition(Ticket ticket) {
-        if (ticket.getStatus() != TicketStatus.WAITING) {
+        if (ticket.getStatus() != TicketStatus.EN_ESPERA) {
             return;
         }
 
         long position = ticketRepository.countTicketsAheadInQueue(
-            TicketStatus.WAITING, 
+            TicketStatus.EN_ESPERA, 
             ticket.getQueueType(), 
             ticket.getId()
         ) + 1;

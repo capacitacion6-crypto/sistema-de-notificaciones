@@ -2,8 +2,9 @@ package com.example.ticketero.service;
 
 import com.example.ticketero.config.TelegramConfig;
 import com.example.ticketero.model.entity.Message;
-import com.example.ticketero.model.entity.MessageType;
 import com.example.ticketero.model.entity.Ticket;
+import com.example.ticketero.model.enums.MessageTemplate;
+import com.example.ticketero.model.enums.MessageType;
 import com.example.ticketero.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -140,5 +141,43 @@ public class TelegramService {
             case "GERENCIA" -> "Gerencia";
             default -> queueType;
         };
+    }
+
+    public String extractChatId(String phoneNumber) {
+        // En un caso real, esto buscaría en una tabla de mapeo teléfono -> chat_id
+        // Por ahora, simulamos que el teléfono es el chat_id
+        return phoneNumber;
+    }
+
+    public String getMessageText(MessageType template, Ticket ticket) {
+        return switch (template) {
+            case CONFIRMATION -> String.format(
+                "✅ Ticket confirmado\n\n📋 Número: %s\n🏦 Cola: %s\n📍 Posición: #%d\n⏱️ Tiempo estimado: %d minutos",
+                ticket.getTicketNumber(),
+                getQueueDisplayName(ticket.getQueueType().name()),
+                ticket.getQueuePosition(),
+                ticket.getEstimatedWaitMinutes()
+            );
+            case PRE_NOTICE -> String.format(
+                "⏰ ¡Pronto será tu turno!\n\n📋 Ticket: %s\n📍 Quedan 3 personas adelante",
+                ticket.getTicketNumber()
+            );
+            case TURN_ACTIVE -> String.format(
+                "🔔 ¡ES TU TURNO!\n\n📋 Ticket: %s\n👤 Asesor: %s\n🏢 Módulo: %d",
+                ticket.getTicketNumber(),
+                ticket.getAdvisor().getName(),
+                ticket.getAdvisor().getModuleNumber()
+            );
+        };
+    }
+
+    public String sendMessage(String chatId, String text) {
+        try {
+            sendToTelegram(chatId, text);
+            return "msg_" + System.currentTimeMillis(); // Simular message ID
+        } catch (Exception e) {
+            log.error("Failed to send message: {}", e.getMessage());
+            return null;
+        }
     }
 }

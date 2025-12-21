@@ -1,8 +1,8 @@
 package com.example.ticketero.repository;
 
 import com.example.ticketero.model.entity.Advisor;
-import com.example.ticketero.model.entity.AdvisorStatus;
-import com.example.ticketero.model.entity.QueueType;
+import com.example.ticketero.model.enums.AdvisorStatus;
+import com.example.ticketero.model.enums.QueueType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

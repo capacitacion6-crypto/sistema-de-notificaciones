@@ -1,9 +1,9 @@
 package com.example.ticketero.service;
 
-import com.example.ticketero.model.entity.Mensaje;
+import com.example.ticketero.model.entity.Message;
 import com.example.ticketero.model.entity.Ticket;
-import com.example.ticketero.model.enums.MessageTemplate;
-import com.example.ticketero.repository.MensajeRepository;
+import com.example.ticketero.model.enums.MessageType;
+import com.example.ticketero.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 @Transactional(readOnly = true)
 public class NotificationService {
 
-    private final MensajeRepository mensajeRepository;
+    private final MessageRepository messageRepository;
     private final TelegramService telegramService;
 
     /**
@@ -31,16 +31,16 @@ public class NotificationService {
     @Transactional
     public void programarMensajePreAviso(Ticket ticket) {
         // Buscar mensaje de pre-aviso existente
-        ticket.getMensajes().stream()
-            .filter(m -> m.getPlantilla() == MessageTemplate.TOTEM_PROXIMO_TURNO)
+        ticket.getMessages().stream()
+            .filter(m -> m.getMessageType() == MessageType.PRE_NOTICE)
             .findFirst()
             .ifPresent(mensaje -> {
                 // Actualizar fecha para envío inmediato
-                mensaje.setFechaProgramada(LocalDateTime.now());
-                mensajeRepository.save(mensaje);
+                mensaje.setSentAt(LocalDateTime.now());
+                messageRepository.save(mensaje);
                 
                 log.info("Pre-aviso message scheduled for immediate sending for ticket: {}", 
-                        ticket.getNumero());
+                        ticket.getTicketNumber());
             });
     }
 
@@ -51,16 +51,16 @@ public class NotificationService {
     @Transactional
     public void programarMensajeTurnoActivo(Ticket ticket) {
         // Buscar mensaje de turno activo existente
-        ticket.getMensajes().stream()
-            .filter(m -> m.getPlantilla() == MessageTemplate.TOTEM_ES_TU_TURNO)
+        ticket.getMessages().stream()
+            .filter(m -> m.getMessageType() == MessageType.TURN_ACTIVE)
             .findFirst()
             .ifPresent(mensaje -> {
                 // Actualizar fecha para envío inmediato
-                mensaje.setFechaProgramada(LocalDateTime.now());
-                mensajeRepository.save(mensaje);
+                mensaje.setSentAt(LocalDateTime.now());
+                messageRepository.save(mensaje);
                 
                 log.info("Active turn message scheduled for immediate sending for ticket: {}", 
-                        ticket.getNumero());
+                        ticket.getTicketNumber());
             });
     }
 
@@ -68,25 +68,25 @@ public class NotificationService {
      * Envía un mensaje inmediato (sin programar).
      * Útil para notificaciones urgentes o de prueba.
      */
-    public boolean enviarMensajeInmediato(Ticket ticket, MessageTemplate plantilla) {
+    public boolean enviarMensajeInmediato(Ticket ticket, MessageType plantilla) {
         try {
-            String chatId = telegramService.extraerChatId(ticket.getTelefono());
-            String texto = telegramService.obtenerTextoMensaje(plantilla, ticket);
+            String chatId = telegramService.extractChatId(ticket.getCustomerPhone());
+            String texto = telegramService.getMessageText(plantilla, ticket);
             
-            String telegramMessageId = telegramService.enviarMensaje(chatId, texto);
+            String telegramMessageId = telegramService.sendMessage(chatId, texto);
             
             if (telegramMessageId != null) {
                 log.info("Immediate message sent successfully for ticket: {}, template: {}", 
-                        ticket.getNumero(), plantilla);
+                        ticket.getTicketNumber(), plantilla);
                 return true;
             } else {
                 log.error("Failed to send immediate message for ticket: {}, template: {}", 
-                         ticket.getNumero(), plantilla);
+                         ticket.getTicketNumber(), plantilla);
                 return false;
             }
         } catch (Exception e) {
             log.error("Error sending immediate message for ticket: {}, template: {}", 
-                     ticket.getNumero(), plantilla, e);
+                     ticket.getTicketNumber(), plantilla, e);
             return false;
         }
     }

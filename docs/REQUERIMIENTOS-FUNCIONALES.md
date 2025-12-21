@@ -230,6 +230,381 @@ Then el sistema genera un ticket con:
   | estimatedWaitMinutes  | positionInQueue × 5               |
   | assignedAdvisor       | null                              |
   | assignedModuleNumber  | null                              |
+And el sistema retorna HTTP 201 Created
+And el sistema programa el envío del mensaje "totem_ticket_creado" vía Telegram
+And el sistema registra el evento "TICKET_CREATED" en auditoría
+```
+
+**Escenario 2: Rechazo por ticket activo existente**
+```gherkin
+Given el cliente con nationalId "12345678-9" tiene un ticket activo con status "EN_ESPERA"
+When el cliente intenta crear un nuevo ticket con:
+  | Campo        | Valor           |
+  | nationalId   | 12345678-9      |
+  | telefono     | +56912345678    |
+  | branchOffice | Sucursal Centro |
+  | queueType    | PERSONAL_BANKER |
+Then el sistema retorna HTTP 409 Conflict
+And el sistema retorna el mensaje "Cliente ya tiene un ticket activo"
+And NO se crea un nuevo ticket
+```
+
+**Escenario 3: Validación de datos de entrada**
+```gherkin
+Given el terminal está en pantalla de selección de servicio
+When el cliente ingresa datos inválidos:
+  | Campo        | Valor Inválido |
+  | nationalId   | ""             |
+  | telefono     | "123"          |
+  | branchOffice | null           |
+  | queueType    | null           |
+Then el sistema retorna HTTP 400 Bad Request
+And el sistema muestra mensajes de validación específicos
+And NO se crea el ticket
+```
+
+**Postcondiciones:**
+- Ticket creado y almacenado en base de datos
+- Mensaje de confirmación programado para envío vía Telegram
+- Evento de auditoría registrado
+- Cliente puede consultar su posición usando el UUID generado
+
+**Excepciones:**
+- **E001:** Cliente ya tiene ticket activo → HTTP 409 Conflict
+- **E002:** Datos de entrada inválidos → HTTP 400 Bad Request
+- **E003:** Error de sistema → HTTP 500 Internal Server Error
+
+---
+
+### **RF-002: Enviar Notificaciones Automáticas vía Telegram**
+
+**Descripción:**  
+El sistema debe enviar notificaciones automáticas al cliente vía Telegram en momentos clave del proceso de atención: confirmación de creación del ticket, pre-aviso cuando esté próximo a ser atendido, y notificación cuando sea su turno activo. Las notificaciones deben incluir información relevante como número de ticket, posición en cola, tiempo estimado y módulo de atención.
+
+**Prioridad:** Alta
+
+**Actor Principal:** Sistema (automatizado)
+
+**Precondiciones:**
+- Cliente tiene número de teléfono válido registrado
+- Bot de Telegram configurado y operativo
+- Cliente ha iniciado conversación con el bot
+
+**Modelo de Datos (Campos del Mensaje):**
+- id: Long, identificador único del mensaje
+- ticketId: Long, referencia al ticket
+- phoneNumber: String, número de teléfono destino
+- template: Enum (totem_ticket_creado, totem_proximo_turno, totem_es_tu_turno)
+- content: String, contenido del mensaje procesado
+- status: Enum (PENDIENTE, ENVIADO, FALLIDO)
+- attemptCount: Integer, número de intentos de envío
+- sentAt: Timestamp, fecha/hora de envío exitoso
+- createdAt: Timestamp, fecha/hora de creación
+
+**Reglas de Negocio Aplicables:**
+- RN-007: Reintentos automáticos hasta 3 veces
+- RN-008: Backoff exponencial en reintentos
+- RN-012: Pre-aviso cuando posición ≤ 3
+
+**Criterios de Aceptación (Gherkin):**
+
+**Escenario 1: Envío exitoso de confirmación de ticket**
+```gherkin
+Given existe un ticket con numero "C01" y telefono "+56912345678"
+And el bot de Telegram está operativo
+When el sistema programa el mensaje "totem_ticket_creado"
+Then el sistema envía el mensaje:
+  "✅ Ticket C01 creado. Posición #5, tiempo estimado: 25min. Sucursal Centro"
+And el mensaje se marca como ENVIADO
+And se registra el timestamp de envío
+```
+
+**Escenario 2: Envío de pre-aviso**
+```gherkin
+Given existe un ticket con numero "P03" en posición 3
+And el ticket tiene status "EN_ESPERA"
+When el sistema detecta que la posición es ≤ 3
+Then el sistema envía el mensaje:
+  "⏰ Pronto será tu turno P03. Acércate a la sucursal."
+And el ticket cambia a status "PROXIMO"
+```
+
+**Escenario 3: Reintento automático por fallo**
+```gherkin
+Given un mensaje con attemptCount = 1 y status = PENDIENTE
+And el envío a Telegram falla
+When el sistema procesa reintentos
+Then el sistema espera 30 segundos
+And reintenta el envío
+And incrementa attemptCount a 2
+```
+
+**Postcondiciones:**
+- Mensaje enviado exitosamente o marcado como FALLIDO
+- Cliente informado del estado de su ticket
+- Registro de auditoría del envío
+
+---
+
+### **RF-003: Calcular Posición y Tiempo Estimado**
+
+**Descripción:**  
+El sistema debe calcular en tiempo real la posición actual del ticket en su cola específica y estimar el tiempo de espera basado en el tipo de servicio y la cantidad de tickets adelante. El cálculo debe actualizarse automáticamente cuando otros tickets son procesados o nuevos tickets son creados.
+
+**Prioridad:** Alta
+
+**Actor Principal:** Sistema (automatizado)
+
+**Precondiciones:**
+- Ticket existe en estado activo (EN_ESPERA, PROXIMO, ATENDIENDO)
+- Sistema de colas operativo
+
+**Reglas de Negocio Aplicables:**
+- RN-003: Orden FIFO dentro de cola
+- RN-010: Cálculo de tiempo estimado
+
+**Criterios de Aceptación (Gherkin):**
+
+**Escenario 1: Cálculo de posición en cola CAJA**
+```gherkin
+Given existen 4 tickets EN_ESPERA en cola CAJA creados antes del ticket "C05"
+And el ticket "C05" tiene status "EN_ESPERA"
+When el sistema calcula la posición
+Then la posición del ticket "C05" es 5
+And el tiempo estimado es 25 minutos (5 × 5min)
+```
+
+**Escenario 2: Actualización automática al completar ticket**
+```gherkin
+Given el ticket "C01" está en posición 1
+And el ticket "C02" está en posición 2
+When el ticket "C01" cambia a status "COMPLETADO"
+Then la posición del ticket "C02" se actualiza a 1
+And el tiempo estimado se recalcula a 5 minutos
+```
+
+---
+
+### **RF-004: Asignar Ticket a Ejecutivo Automáticamente**
+
+**Descripción:**  
+El sistema debe asignar automáticamente tickets a ejecutivos disponibles siguiendo las reglas de prioridad de colas, orden FIFO y balanceo de carga. La asignación debe considerar la especialización del ejecutivo y su estado actual de disponibilidad.
+
+**Prioridad:** Alta
+
+**Actor Principal:** Sistema (automatizado)
+
+**Precondiciones:**
+- Existe al menos un asesor con status AVAILABLE
+- Existen tickets en estado EN_ESPERA
+
+**Modelo de Datos (Campos del Advisor):**
+- id: Long, identificador único
+- name: String, nombre del asesor
+- moduleNumber: Integer (1-5), número del módulo
+- queueTypes: List<QueueType>, tipos de cola que puede atender
+- status: Enum (AVAILABLE, BUSY, OFFLINE)
+- assignedTicketsCount: Integer, cantidad de tickets asignados actualmente
+
+**Reglas de Negocio Aplicables:**
+- RN-002: Prioridad de colas
+- RN-003: Orden FIFO dentro de cola
+- RN-004: Balanceo de carga entre asesores
+
+**Criterios de Aceptación (Gherkin):**
+
+**Escenario 1: Asignación por prioridad de cola**
+```gherkin
+Given existe un ticket "G01" en cola GERENCIA (prioridad 4)
+And existe un ticket "C01" en cola CAJA (prioridad 1)
+And ambos tickets tienen status "EN_ESPERA"
+And existe un asesor AVAILABLE que atiende ambas colas
+When el sistema ejecuta asignación automática
+Then el ticket "G01" se asigna primero
+And el asesor cambia a status "BUSY"
+And el ticket cambia a status "ATENDIENDO"
+```
+
+**Escenario 2: Balanceo de carga**
+```gherkin
+Given existen 2 asesores AVAILABLE:
+  | Asesor | assignedTicketsCount |
+  | Ana    | 2                    |
+  | Luis   | 1                    |
+And existe un ticket "C01" EN_ESPERA
+When el sistema asigna el ticket
+Then el ticket se asigna a "Luis" (menor carga)
+And assignedTicketsCount de Luis se incrementa a 2
+```
+
+---
+
+### **RF-005: Completar Atención de Ticket**
+
+**Descripción:**  
+El sistema debe permitir al asesor marcar un ticket como completado una vez finalizada la atención al cliente. Al completar, el asesor debe quedar disponible para recibir nuevas asignaciones y el sistema debe actualizar las estadísticas operacionales.
+
+**Prioridad:** Media
+
+**Actor Principal:** Asesor
+
+**Precondiciones:**
+- Asesor tiene ticket asignado en estado ATENDIENDO
+- Asesor está autenticado en el sistema
+
+**Criterios de Aceptación (Gherkin):**
+
+**Escenario 1: Completar ticket exitosamente**
+```gherkin
+Given el asesor "Ana" tiene asignado el ticket "C01" con status "ATENDIENDO"
+When el asesor marca el ticket como completado
+Then el ticket cambia a status "COMPLETADO"
+And el asesor cambia a status "AVAILABLE"
+And assignedTicketsCount del asesor se decrementa en 1
+And se registra el evento "TICKET_COMPLETED" en auditoría
+```
+
+---
+
+### **RF-006: Consultar Estado del Ticket**
+
+**Descripción:**  
+El sistema debe permitir al cliente consultar el estado actual de su ticket usando el código de referencia (UUID), mostrando información actualizada sobre posición en cola, tiempo estimado de espera y estado actual.
+
+**Prioridad:** Media
+
+**Actor Principal:** Cliente
+
+**Precondiciones:**
+- Cliente tiene código de referencia válido
+- Ticket existe en el sistema
+
+**Criterios de Aceptación (Gherkin):**
+
+**Escenario 1: Consulta exitosa de ticket activo**
+```gherkin
+Given existe un ticket con UUID "abc-123" y numero "C01"
+And el ticket tiene status "EN_ESPERA" y posición 3
+When el cliente consulta con UUID "abc-123"
+Then el sistema retorna:
+  | Campo                | Valor     |
+  | numero               | C01       |
+  | status               | EN_ESPERA |
+  | positionInQueue      | 3         |
+  | estimatedWaitMinutes | 15        |
+  | queueType            | CAJA      |
+```
+
+---
+
+### **RF-007: Panel de Monitoreo para Supervisor**
+
+**Descripción:**  
+El sistema debe proporcionar un panel de monitoreo en tiempo real para supervisores, mostrando estadísticas operacionales, estado de colas, performance de asesores y métricas clave del servicio.
+
+**Prioridad:** Media
+
+**Actor Principal:** Supervisor
+
+**Precondiciones:**
+- Supervisor autenticado con permisos administrativos
+- Sistema operativo con datos disponibles
+
+**Criterios de Aceptación (Gherkin):**
+
+**Escenario 1: Visualizar dashboard completo**
+```gherkin
+Given el supervisor está autenticado
+When accede al panel de monitoreo
+Then el sistema muestra:
+  - Total de tickets por estado
+  - Tiempo promedio de atención por cola
+  - Estado actual de todos los asesores
+  - Tickets en espera por cola
+  - Métricas de performance del día
+```
+
+---
+
+### **RF-008: Registrar Auditoría de Eventos**
+
+**Descripción:**  
+El sistema debe registrar automáticamente todos los eventos críticos del proceso de atención en una tabla de auditoría para trazabilidad, análisis posterior y cumplimiento regulatorio.
+
+**Prioridad:** Alta
+
+**Actor Principal:** Sistema (automatizado)
+
+**Modelo de Datos (Campos de Auditoría):**
+- id: Long, identificador único
+- eventType: String, tipo de evento
+- entityType: String, tipo de entidad afectada
+- entityId: Long, ID de la entidad
+- oldValue: String, valor anterior (JSON)
+- newValue: String, valor nuevo (JSON)
+- performedBy: String, usuario que ejecutó la acción
+- timestamp: Timestamp, fecha/hora del evento
+
+**Criterios de Aceptación (Gherkin):**
+
+**Escenario 1: Registro automático de creación de ticket**
+```gherkin
+Given se crea un nuevo ticket con ID 123
+When el ticket se guarda en base de datos
+Then el sistema registra en auditoría:
+  | Campo       | Valor           |
+  | eventType   | TICKET_CREATED  |
+  | entityType  | TICKET          |
+  | entityId    | 123             |
+  | oldValue    | null            |
+  | newValue    | {ticket_json}   |
+  | performedBy | SYSTEM          |
+```ull                              |
+And el sistema retorna HTTP 201 Created
+And el sistema programa el envío del mensaje "totem_ticket_creado" vía Telegram
+And el sistema registra el evento "TICKET_CREATED" en auditoría
+```
+
+**Escenario 2: Rechazo por ticket activo existente**
+```gherkin
+Given el cliente con nationalId "12345678-9" tiene un ticket activo con status "EN_ESPERA"
+When el cliente intenta crear un nuevo ticket con:
+  | Campo        | Valor           |
+  | nationalId   | 12345678-9      |
+  | telefono     | +56912345678    |
+  | branchOffice | Sucursal Centro |
+  | queueType    | PERSONAL_BANKER |
+Then el sistema retorna HTTP 409 Conflict
+And el sistema retorna el mensaje "Cliente ya tiene un ticket activo"
+And NO se crea un nuevo ticket
+```
+
+**Escenario 3: Validación de datos de entrada**
+```gherkin
+Given el terminal está en pantalla de selección de servicio
+When el cliente ingresa datos inválidos:
+  | Campo        | Valor Inválido |
+  | nationalId   | ""             |
+  | telefono     | "123"          |
+  | branchOffice | null           |
+  | queueType    | null           |
+Then el sistema retorna HTTP 400 Bad Request
+And el sistema muestra mensajes de validación específicos
+And NO se crea el ticket
+```
+
+**Postcondiciones:**
+- Ticket creado y almacenado en base de datos
+- Mensaje de confirmación programado para envío vía Telegram
+- Evento de auditoría registrado
+- Cliente puede consultar su posición usando el UUID generado
+
+**Excepciones:**
+- **E001:** Cliente ya tiene ticket activo → HTTP 409 Conflict
+- **E002:** Datos de entrada inválidos → HTTP 400 Bad Request
+- **E003:** Error de sistema → HTTP 500 Internal Server Error
+
+---ull                              |
 And el sistema almacena el ticket en base de datos
 And el sistema programa 3 mensajes de Telegram
 And el sistema retorna HTTP 201 con JSON:

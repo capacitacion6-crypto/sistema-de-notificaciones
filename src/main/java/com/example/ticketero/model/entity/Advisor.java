@@ -1,5 +1,7 @@
 package com.example.ticketero.model.entity;
 
+import com.example.ticketero.model.enums.AdvisorStatus;
+import com.example.ticketero.model.enums.QueueType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -37,6 +39,7 @@ public class Advisor {
     @OneToMany(mappedBy = "advisor", cascade = CascadeType.ALL)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
+    @Builder.Default
     private List<Ticket> tickets = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)

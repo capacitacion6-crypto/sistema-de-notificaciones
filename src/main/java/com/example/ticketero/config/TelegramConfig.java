@@ -1,16 +1,21 @@
 package com.example.ticketero.config;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
-@ConfigurationProperties(prefix = "telegram")
 public class TelegramConfig {
 
+    @Value("${telegram.bot-token}")
     private String botToken;
-    private String apiUrl = "https://api.telegram.org/bot";
+
+    @Value("${telegram.api-url}")
+    private String apiUrl;
+
+    @Value("${telegram.chat-id}")
+    private String chatId;
 
     @Bean
     public RestTemplate restTemplate() {
@@ -21,16 +26,12 @@ public class TelegramConfig {
         return botToken;
     }
 
-    public void setBotToken(String botToken) {
-        this.botToken = botToken;
-    }
-
     public String getApiUrl() {
         return apiUrl;
     }
 
-    public void setApiUrl(String apiUrl) {
-        this.apiUrl = apiUrl;
+    public String getChatId() {
+        return chatId;
     }
 
     public String getFullApiUrl() {

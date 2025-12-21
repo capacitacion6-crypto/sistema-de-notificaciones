@@ -1,5 +1,7 @@
 package com.example.ticketero.model.entity;
 
+import com.example.ticketero.model.enums.QueueType;
+import com.example.ticketero.model.enums.TicketStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -64,12 +66,13 @@ public class Ticket {
     @OneToMany(mappedBy = "ticket", cascade = CascadeType.ALL)
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
+    @Builder.Default
     private List<Message> messages = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.uuid = UUID.randomUUID();
-        this.status = TicketStatus.WAITING;
+        this.status = TicketStatus.EN_ESPERA;
     }
 }

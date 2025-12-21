@@ -1,10 +1,8 @@
 package com.example.ticketero.model.entity;
 
+import com.example.ticketero.model.enums.MessageType;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import java.time.LocalDateTime;
 

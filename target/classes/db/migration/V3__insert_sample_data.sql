@@ -1,9 +1,8 @@
--- V3: Insertar datos de ejemplo para desarrollo
-
--- Insertar asesores de ejemplo
-INSERT INTO advisor (name, email, status, module_number, assigned_tickets_count) VALUES
-('María González', 'maria.gonzalez@banco.com', 'AVAILABLE', 1, 0),
-('Carlos Rodríguez', 'carlos.rodriguez@banco.com', 'AVAILABLE', 2, 0),
-('Ana Martínez', 'ana.martinez@banco.com', 'AVAILABLE', 3, 0),
-('Luis Fernández', 'luis.fernandez@banco.com', 'OFFLINE', 4, 0),
-('Carmen López', 'carmen.lopez@banco.com', 'AVAILABLE', 5, 0);
+-- Insert sample advisors
+INSERT INTO advisors (name, module_number, queue_type, status) VALUES
+('María González', 1, 'CAJA', 'AVAILABLE'),
+('Carlos Rodríguez', 2, 'CAJA', 'AVAILABLE'),
+('Ana Martínez', 3, 'PERSONAL_BANKER', 'AVAILABLE'),
+('Luis Fernández', 4, 'PERSONAL_BANKER', 'AVAILABLE'),
+('Patricia López', 5, 'EMPRESAS', 'AVAILABLE'),
+('Roberto Silva', 6, 'GERENCIA', 'AVAILABLE');

@@ -1,7 +1,7 @@
 package com.example.ticketero.controller;
 
 import com.example.ticketero.model.dto.request.CreateTicketRequest;
-import com.example.ticketero.model.entity.QueueType;
+import com.example.ticketero.model.enums.QueueType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +42,7 @@ class TicketControllerIntegrationTest {
                 .andExpect(jsonPath("$.uuid").exists())
                 .andExpect(jsonPath("$.ticketNumber").exists())
                 .andExpect(jsonPath("$.queueType").value("CAJA"))
-                .andExpect(jsonPath("$.status").value("WAITING"))
+                .andExpect(jsonPath("$.status").value("EN_ESPERA"))
                 .andExpect(jsonPath("$.queuePosition").exists())
                 .andExpect(jsonPath("$.estimatedWaitMinutes").exists());
     }

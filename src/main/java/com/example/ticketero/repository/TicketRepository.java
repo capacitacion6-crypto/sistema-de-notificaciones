@@ -1,8 +1,8 @@
 package com.example.ticketero.repository;
 
-import com.example.ticketero.model.entity.QueueType;
 import com.example.ticketero.model.entity.Ticket;
-import com.example.ticketero.model.entity.TicketStatus;
+import com.example.ticketero.model.enums.QueueType;
+import com.example.ticketero.model.enums.TicketStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -39,8 +39,19 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     @Query("""
         SELECT t FROM Ticket t
-        WHERE t.status = 'WAITING'
+        WHERE t.status = 'EN_ESPERA'
         ORDER BY t.createdAt ASC
         """)
     List<Ticket> findNextTicketToAssign();
+
+    @Query("""
+        SELECT t.ticketNumber FROM Ticket t
+        WHERE t.queueType = :queueType
+        AND DATE(t.createdAt) = CURRENT_DATE
+        ORDER BY t.createdAt DESC
+        LIMIT 1
+        """)
+    Optional<String> findLastTicketNumberOfDay(@Param("queueType") QueueType queueType);
+
+    long countByQueueTypeAndStatus(QueueType queueType, TicketStatus status);
 }

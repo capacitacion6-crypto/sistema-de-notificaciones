@@ -1,6 +1,9 @@
 package com.example.ticketero.service;
 
 import com.example.ticketero.model.entity.*;
+import com.example.ticketero.model.enums.AdvisorStatus;
+import com.example.ticketero.model.enums.QueueType;
+import com.example.ticketero.model.enums.TicketStatus;
 import com.example.ticketero.repository.AdvisorRepository;
 import com.example.ticketero.repository.TicketRepository;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +53,7 @@ public class AssignmentService {
     @Transactional
     public void processQueueUpdates() {
         // Check for pre-notice messages (position <= 3)
-        List<Ticket> waitingTickets = ticketRepository.findByStatus(TicketStatus.WAITING);
+        List<Ticket> waitingTickets = ticketRepository.findByStatus(TicketStatus.EN_ESPERA);
 
         for (Ticket ticket : waitingTickets) {
             updateQueuePosition(ticket);
@@ -58,7 +61,7 @@ public class AssignmentService {
             if (ticket.getQueuePosition() != null && ticket.getQueuePosition() <= 3) {
                 // Check if pre-notice already sent
                 boolean preNoticeSent = ticket.getMessages().stream()
-                    .anyMatch(msg -> MessageType.PRE_NOTICE.equals(msg.getMessageType()) && "SENT".equals(msg.getDeliveryStatus()));
+                    .anyMatch(msg -> "PRE_NOTICE".equals(msg.getMessageType()) && "SENT".equals(msg.getDeliveryStatus()));
                 
                 if (!preNoticeSent) {
                     telegramService.sendPreNoticeMessage(ticket);
@@ -79,7 +82,7 @@ public class AssignmentService {
         for (QueueType queueType : priorityOrder) {
             if (advisor.getQueueType() == queueType) {
                 List<Ticket> tickets = ticketRepository.findByStatusAndQueueTypeOrderByCreatedAtAsc(
-                    TicketStatus.WAITING, queueType
+                    TicketStatus.EN_ESPERA, queueType
                 );
                 if (!tickets.isEmpty()) {
                     return Optional.of(tickets.get(0));
@@ -92,7 +95,7 @@ public class AssignmentService {
 
     private void assignTicketToAdvisor(Ticket ticket, Advisor advisor) {
         // Update ticket
-        ticket.setStatus(TicketStatus.ASSIGNED);
+        ticket.setStatus(TicketStatus.ATENDIENDO);
         ticket.setAdvisor(advisor);
         ticket.setAssignedAt(LocalDateTime.now());
 
@@ -120,7 +123,7 @@ public class AssignmentService {
         }
 
         Ticket ticket = ticketOpt.get();
-        ticket.setStatus(TicketStatus.COMPLETED);
+        ticket.setStatus(TicketStatus.COMPLETADO);
         ticket.setCompletedAt(LocalDateTime.now());
 
         if (ticket.getAdvisor() != null) {
@@ -138,12 +141,12 @@ public class AssignmentService {
     }
 
     private void updateQueuePosition(Ticket ticket) {
-        if (ticket.getStatus() != TicketStatus.WAITING) {
+        if (ticket.getStatus() != TicketStatus.EN_ESPERA) {
             return;
         }
 
         long position = ticketRepository.countTicketsAheadInQueue(
-            TicketStatus.WAITING, 
+            TicketStatus.EN_ESPERA, 
             ticket.getQueueType(), 
             ticket.getId()
         ) + 1;

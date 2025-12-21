@@ -1,48 +1,41 @@
--- V1: Crear tablas principales del sistema
-
--- Tabla de asesores
-CREATE TABLE advisor (
+-- Create advisors table
+CREATE TABLE advisors (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL,
-    status VARCHAR(20) NOT NULL,
     module_number INTEGER NOT NULL,
-    assigned_tickets_count INTEGER NOT NULL DEFAULT 0,
+    queue_type VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP
 );
 
--- Tabla de tickets
-CREATE TABLE ticket (
+-- Create tickets table
+CREATE TABLE tickets (
     id BIGSERIAL PRIMARY KEY,
-    codigo_referencia UUID UNIQUE NOT NULL,
-    numero VARCHAR(10) UNIQUE NOT NULL,
-    national_id VARCHAR(20) NOT NULL,
-    telefono VARCHAR(20) NOT NULL,
-    branch_office VARCHAR(100) NOT NULL,
+    uuid UUID UNIQUE NOT NULL,
+    ticket_number VARCHAR(20) UNIQUE NOT NULL,
+    customer_rut VARCHAR(12) NOT NULL,
+    customer_phone VARCHAR(15),
     queue_type VARCHAR(20) NOT NULL,
     status VARCHAR(20) NOT NULL,
-    position_in_queue INTEGER,
+    queue_position INTEGER,
     estimated_wait_minutes INTEGER,
+    advisor_id BIGINT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP,
-    assigned_advisor_id BIGINT,
-    assigned_module_number INTEGER,
-    CONSTRAINT fk_ticket_advisor FOREIGN KEY (assigned_advisor_id) 
-        REFERENCES advisor(id) ON DELETE SET NULL
+    assigned_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    CONSTRAINT fk_ticket_advisor FOREIGN KEY (advisor_id) REFERENCES advisors(id)
 );
 
--- Tabla de mensajes
-CREATE TABLE mensaje (
+-- Create messages table
+CREATE TABLE messages (
     id BIGSERIAL PRIMARY KEY,
     ticket_id BIGINT NOT NULL,
-    plantilla VARCHAR(50) NOT NULL,
-    estado_envio VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE',
-    fecha_programada TIMESTAMP NOT NULL,
-    fecha_envio TIMESTAMP,
-    telegram_message_id VARCHAR(50),
-    intentos INTEGER NOT NULL DEFAULT 0,
+    message_type VARCHAR(20) NOT NULL,
+    content TEXT NOT NULL,
+    sent_at TIMESTAMP,
+    delivery_status VARCHAR(20) NOT NULL,
+    retry_count INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_mensaje_ticket FOREIGN KEY (ticket_id) 
-        REFERENCES ticket(id) ON DELETE CASCADE
+    CONSTRAINT fk_message_ticket FOREIGN KEY (ticket_id) REFERENCES tickets(id)
 );

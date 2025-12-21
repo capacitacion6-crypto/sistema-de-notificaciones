@@ -2,9 +2,10 @@ package com.example.ticketero.controller;
 
 import com.example.ticketero.model.dto.response.AdvisorResponse;
 import com.example.ticketero.model.dto.response.DashboardResponse;
-import com.example.ticketero.model.entity.AdvisorStatus;
+import com.example.ticketero.model.enums.AdvisorStatus;
 import com.example.ticketero.service.AdvisorService;
 import com.example.ticketero.service.AssignmentService;
+import com.example.ticketero.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
