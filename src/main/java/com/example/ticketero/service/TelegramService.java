@@ -8,6 +8,7 @@ import com.example.ticketero.model.enums.MessageType;
 import com.example.ticketero.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,7 +21,6 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 @Transactional(readOnly = true)
 public class TelegramService {
@@ -28,6 +28,16 @@ public class TelegramService {
     private final TelegramConfig telegramConfig;
     private final RestTemplate restTemplate;
     private final MessageRepository messageRepository;
+    private final String telegramChatId;
+    
+    public TelegramService(TelegramConfig telegramConfig, RestTemplate restTemplate, 
+                          MessageRepository messageRepository, 
+                          @Value("${TELEGRAM_CHAT_ID}") String telegramChatId) {
+        this.telegramConfig = telegramConfig;
+        this.restTemplate = restTemplate;
+        this.messageRepository = messageRepository;
+        this.telegramChatId = telegramChatId;
+    }
 
     @Transactional
     public void sendConfirmationMessage(Ticket ticket) {
@@ -98,7 +108,8 @@ public class TelegramService {
         Message saved = messageRepository.save(message);
 
         try {
-            sendToTelegram(ticket.getCustomerPhone(), content);
+            log.debug("Using chat_id: {} for ticket {}", telegramChatId, ticket.getTicketNumber());
+            sendToTelegram(telegramChatId, content);
             saved.setSentAt(LocalDateTime.now());
             saved.setDeliveryStatus("SENT");
             log.info("Message sent successfully for ticket {}", ticket.getTicketNumber());
@@ -108,7 +119,7 @@ public class TelegramService {
         }
     }
 
-    private void sendToTelegram(String phoneNumber, String text) {
+    private void sendToTelegram(String chatId, String text) {
         if (telegramConfig.getBotToken() == null || telegramConfig.getBotToken().isEmpty()) {
             log.warn("Telegram bot token not configured, simulating message send");
             return;
@@ -117,7 +128,7 @@ public class TelegramService {
         String url = telegramConfig.getFullApiUrl() + "/sendMessage";
         
         Map<String, Object> payload = Map.of(
-            "chat_id", phoneNumber,
+            "chat_id", chatId,
             "text", text,
             "parse_mode", "HTML"
         );
@@ -144,10 +155,12 @@ public class TelegramService {
     }
 
     public String extractChatId(String phoneNumber) {
-        // En un caso real, esto buscaría en una tabla de mapeo teléfono -> chat_id
-        // Por ahora, simulamos que el teléfono es el chat_id
-        return phoneNumber;
+        // En desarrollo, todos los mensajes van al mismo chat_id configurado
+        // TODO: En producción, implementar mapeo teléfono -> chat_id
+        return telegramChatId;
     }
+
+
 
     public String getMessageText(MessageType template, Ticket ticket) {
         return switch (template) {

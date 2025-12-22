@@ -56,8 +56,8 @@ public class AdminController {
 
     @PostMapping("/assignments/process")
     public ResponseEntity<Void> processAssignments() {
-        log.info("POST /api/admin/assignments/process - Processing queue updates");
-        assignmentService.processQueueUpdates();
+        log.info("POST /api/admin/assignments/process - Processing all assignments");
+        assignmentService.processAllAssignments();
         return ResponseEntity.ok().build();
     }
 }

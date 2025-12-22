@@ -70,26 +70,38 @@ public class AssignmentService {
         }
     }
 
-    private Optional<Ticket> findNextTicketForAdvisor(Advisor advisor) {
-        // Priority order: GERENCIA > EMPRESAS > PERSONAL_BANKER > CAJA
-        List<QueueType> priorityOrder = Arrays.asList(
-            QueueType.GERENCIA,
-            QueueType.EMPRESAS, 
-            QueueType.PERSONAL_BANKER,
-            QueueType.CAJA
-        );
-
-        for (QueueType queueType : priorityOrder) {
-            if (advisor.getQueueType() == queueType) {
-                List<Ticket> tickets = ticketRepository.findByStatusAndQueueTypeOrderByCreatedAtAsc(
-                    TicketStatus.EN_ESPERA, queueType
-                );
-                if (!tickets.isEmpty()) {
-                    return Optional.of(tickets.get(0));
-                }
+    @Transactional
+    public void processAllAssignments() {
+        log.info("Processing all pending assignments...");
+        
+        // Get all available advisors
+        List<Advisor> availableAdvisors = advisorRepository.findByStatus(AdvisorStatus.AVAILABLE);
+        
+        int assignedCount = 0;
+        for (Advisor advisor : availableAdvisors) {
+            Optional<Ticket> nextTicket = findNextTicketForAdvisor(advisor);
+            if (nextTicket.isPresent()) {
+                assignTicketToAdvisor(nextTicket.get(), advisor);
+                assignedCount++;
             }
         }
+        
+        log.info("Assigned {} tickets to available advisors", assignedCount);
+        
+        // Also update queue positions
+        processQueueUpdates();
+    }
 
+    private Optional<Ticket> findNextTicketForAdvisor(Advisor advisor) {
+        // Buscar tickets del mismo tipo de cola que el asesor
+        List<Ticket> tickets = ticketRepository.findByStatusAndQueueTypeOrderByCreatedAtAsc(
+            TicketStatus.EN_ESPERA, advisor.getQueueType()
+        );
+        
+        if (!tickets.isEmpty()) {
+            return Optional.of(tickets.get(0));
+        }
+        
         return Optional.empty();
     }
 

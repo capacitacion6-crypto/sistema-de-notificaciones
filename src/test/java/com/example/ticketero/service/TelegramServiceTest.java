@@ -2,6 +2,8 @@ package com.example.ticketero.service;
 
 import com.example.ticketero.config.TelegramConfig;
 import com.example.ticketero.model.entity.*;
+import com.example.ticketero.model.enums.MessageType;
+import com.example.ticketero.model.enums.QueueType;
 import com.example.ticketero.repository.MessageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +31,7 @@ class TelegramServiceTest {
 
     @BeforeEach
     void setUp() {
-        telegramService = new TelegramService(telegramConfig, restTemplate, messageRepository);
+        telegramService = new TelegramService(telegramConfig, restTemplate, messageRepository, "123456789");
     }
 
     @Test

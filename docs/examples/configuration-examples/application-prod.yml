@@ -1,0 +1,202 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+  http2:
+    enabled: true
+
+spring:
+  profiles:
+    active: prod
+  
+  application:
+    name: sistema-ticketero
+  
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      pool-name: TicketeroHikariCP
+      data-source-properties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 250
+        prepStmtCacheSqlLimit: 2048
+        useServerPrepStmts: true
+        useLocalSessionState: true
+        rewriteBatchedStatements: true
+        cacheResultSetMetadata: true
+        cacheServerConfiguration: true
+        elideSetAutoCommits: true
+        maintainTimeStats: false
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        use_sql_comments: false
+        jdbc:
+          batch_size: 20
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+        connection:
+          provider_disables_autocommit: true
+        query:
+          in_clause_parameter_padding: true
+          fail_on_pagination_over_collection_fetch: true
+          plan_cache_max_size: 2048
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 20
+        max-idle: 8
+        min-idle: 2
+        max-wait: -1ms
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000
+      cache-null-values: false
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      write-durations-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+    default-property-inclusion: non_null
+
+telegram:
+  bot:
+    token: ${TELEGRAM_BOT_TOKEN}
+    api-url: https://api.telegram.org/bot
+    connect-timeout: 30000
+    read-timeout: 60000
+    max-requests-per-second: 30
+    max-requests-per-minute: 1000
+  
+  messages:
+    confirmacion: "✅ Ticket {numero} creado\n📍 Posición: #{posicion}\n⏱️ Tiempo estimado: {tiempo} min"
+    pre-aviso: "⏰ ¡Atención! Pronto será tu turno\n🎫 Ticket: {numero}\n📍 Quedan 2 personas delante"
+    turno-activo: "🔔 ¡ES TU TURNO!\n🎫 Ticket: {numero}\n🏢 Diríjase al módulo {modulo}\n👨💼 Asesor: {asesor}"
+    ticket-completado: "✅ Atención completada\n🎫 Ticket: {numero}\n⏱️ Tiempo de atención: {tiempo} min\n¡Gracias por su visita!"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    info:
+      enabled: true
+    metrics:
+      enabled: true
+  health:
+    diskspace:
+      enabled: true
+    db:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+      sla:
+        http.server.requests: 100ms, 500ms, 1s, 2s
+    tags:
+      application: ${spring.application.name}
+      environment: prod
+
+logging:
+  level:
+    root: INFO
+    com.ticketero: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 30
+      total-size-cap: 3GB
+
+# Configuración de seguridad (para futuras versiones)
+security:
+  jwt:
+    secret: ${JWT_SECRET:default-secret-change-in-production}
+    expiration: 86400 # 24 horas
+
+# Configuración de la aplicación
+app:
+  scheduler:
+    ticket-processing:
+      enabled: true
+      fixed-delay: 30000 # 30 segundos
+    metrics-update:
+      enabled: true
+      fixed-delay: 60000 # 1 minuto
+  
+  business:
+    max-tickets-per-advisor: 1
+    max-wait-time-minutes: 120
+    pre-notification-threshold: 2 # Notificar cuando quedan 2 tickets
+    
+  performance:
+    async:
+      core-pool-size: 4
+      max-pool-size: 8
+      queue-capacity: 100
+    
+    cache:
+      ticket-position-ttl: 300 # 5 minutos
+      advisor-stats-ttl: 600 # 10 minutos
+      dashboard-stats-ttl: 120 # 2 minutos

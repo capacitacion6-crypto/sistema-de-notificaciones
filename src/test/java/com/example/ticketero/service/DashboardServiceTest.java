@@ -2,6 +2,9 @@ package com.example.ticketero.service;
 
 import com.example.ticketero.model.dto.response.DashboardResponse;
 import com.example.ticketero.model.entity.*;
+import com.example.ticketero.model.enums.AdvisorStatus;
+import com.example.ticketero.model.enums.QueueType;
+import com.example.ticketero.model.enums.TicketStatus;
 import com.example.ticketero.repository.AdvisorRepository;
 import com.example.ticketero.repository.TicketRepository;
 import org.junit.jupiter.api.Test;
@@ -38,7 +41,7 @@ class DashboardServiceTest {
         // Given
         Ticket ticket1 = Ticket.builder()
             .id(1L)
-            .status(TicketStatus.WAITING)
+            .status(TicketStatus.EN_ESPERA)
             .queueType(QueueType.CAJA)
             .estimatedWaitMinutes(15)
             .createdAt(LocalDateTime.now())

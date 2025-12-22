@@ -14,6 +14,8 @@ public interface AdvisorRepository extends JpaRepository<Advisor, Long> {
 
     List<Advisor> findByStatusAndQueueType(AdvisorStatus status, QueueType queueType);
 
+    List<Advisor> findByStatus(AdvisorStatus status);
+
     Optional<Advisor> findFirstByStatusAndQueueTypeOrderByUpdatedAtAsc(AdvisorStatus status, QueueType queueType);
 
     long countByStatusAndQueueType(AdvisorStatus status, QueueType queueType);

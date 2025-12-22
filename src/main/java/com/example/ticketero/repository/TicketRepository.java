@@ -24,7 +24,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     long countByStatusAndQueueType(TicketStatus status, QueueType queueType);
 
     @Query("""
-        SELECT t FROM Ticket t
+        SELECT COUNT(t) FROM Ticket t
         WHERE t.status = :status
         AND t.queueType = :queueType
         AND t.createdAt < (SELECT t2.createdAt FROM Ticket t2 WHERE t2.id = :ticketId)
@@ -47,7 +47,7 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     @Query("""
         SELECT t.ticketNumber FROM Ticket t
         WHERE t.queueType = :queueType
-        AND DATE(t.createdAt) = CURRENT_DATE
+        AND CAST(t.createdAt AS DATE) = CURRENT_DATE
         ORDER BY t.createdAt DESC
         LIMIT 1
         """)

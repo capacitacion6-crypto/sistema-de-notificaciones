@@ -1,0 +1,359 @@
+{
+  "info": {
+    "name": "Sistema Ticketero API Examples",
+    "description": "Ejemplos de uso de la API del Sistema Ticketero",
+    "version": "1.0.0",
+    "baseUrl": "http://localhost:8080/api"
+  },
+  "examples": {
+    "tickets": {
+      "create": {
+        "description": "Crear un nuevo ticket",
+        "method": "POST",
+        "url": "/tickets",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "tipoServicio": "CAJA",
+          "telegramChatId": "1234567890"
+        },
+        "response": {
+          "status": 201,
+          "body": {
+            "id": 1,
+            "numero": "C071234",
+            "uuid": "550e8400-e29b-41d4-a716-446655440000",
+            "tipoServicio": "CAJA",
+            "estado": "ESPERANDO",
+            "posicionEnCola": 3,
+            "tiempoEstimadoMinutos": 15,
+            "createdAt": "2024-12-07T10:30:00",
+            "advisorAsignado": null,
+            "telegramChatId": "1234567890"
+          }
+        },
+        "curl": "curl -X POST http://localhost:8080/api/tickets -H \"Content-Type: application/json\" -d '{\"tipoServicio\":\"CAJA\",\"telegramChatId\":\"1234567890\"}'"
+      },
+      "getByUuid": {
+        "description": "Obtener ticket por UUID",
+        "method": "GET",
+        "url": "/tickets/{uuid}",
+        "pathParams": {
+          "uuid": "550e8400-e29b-41d4-a716-446655440000"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "id": 1,
+            "numero": "C071234",
+            "uuid": "550e8400-e29b-41d4-a716-446655440000",
+            "tipoServicio": "CAJA",
+            "estado": "EN_PROGRESO",
+            "posicionEnCola": 0,
+            "tiempoEstimadoMinutos": 0,
+            "createdAt": "2024-12-07T10:30:00",
+            "advisorAsignado": {
+              "id": 1,
+              "nombre": "María González",
+              "modulo": 3
+            },
+            "telegramChatId": "1234567890"
+          }
+        },
+        "curl": "curl -X GET http://localhost:8080/api/tickets/550e8400-e29b-41d4-a716-446655440000"
+      },
+      "getPosition": {
+        "description": "Consultar posición en cola",
+        "method": "GET",
+        "url": "/tickets/{numero}/position",
+        "pathParams": {
+          "numero": "C071234"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "numero": "C071234",
+            "posicionEnCola": 2,
+            "tiempoEstimadoMinutos": 10,
+            "estado": "ESPERANDO",
+            "ticketsDelante": 2,
+            "tiempoPromedioAtencion": 5
+          }
+        },
+        "curl": "curl -X GET http://localhost:8080/api/tickets/C071234/position"
+      }
+    },
+    "admin": {
+      "dashboard": {
+        "description": "Obtener datos del dashboard",
+        "method": "GET",
+        "url": "/admin/dashboard",
+        "response": {
+          "status": 200,
+          "body": {
+            "estadisticas": {
+              "ticketsEsperando": 5,
+              "ticketsEnProgreso": 3,
+              "ticketsCompletadosHoy": 47,
+              "totalTicketsHoy": 55,
+              "tiempoPromedioAtencion": 8.5,
+              "asesoresDisponibles": 4,
+              "asesoresOcupados": 3,
+              "asesoresDescanso": 1
+            },
+            "colasPorTipo": {
+              "CAJA": {
+                "esperando": 2,
+                "enProgreso": 1,
+                "tiempoPromedio": 5.2
+              },
+              "PERSONAL_BANKER": {
+                "esperando": 1,
+                "enProgreso": 1,
+                "tiempoPromedio": 12.8
+              },
+              "EMPRESAS": {
+                "esperando": 1,
+                "enProgreso": 1,
+                "tiempoPromedio": 18.5
+              },
+              "GERENCIA": {
+                "esperando": 1,
+                "enProgreso": 0,
+                "tiempoPromedio": 25.0
+              }
+            },
+            "ticketsRecientes": [
+              {
+                "id": 55,
+                "numero": "C071255",
+                "tipoServicio": "CAJA",
+                "estado": "ESPERANDO",
+                "createdAt": "2024-12-07T11:45:00",
+                "posicionEnCola": 1
+              }
+            ],
+            "asesores": [
+              {
+                "id": 1,
+                "nombre": "María González",
+                "tipoServicio": "CAJA",
+                "estado": "OCUPADO",
+                "modulo": 3,
+                "ticketActual": "C071254"
+              }
+            ]
+          }
+        },
+        "curl": "curl -X GET http://localhost:8080/api/admin/dashboard"
+      },
+      "getAdvisors": {
+        "description": "Obtener lista de asesores",
+        "method": "GET",
+        "url": "/admin/advisors",
+        "response": {
+          "status": 200,
+          "body": [
+            {
+              "id": 1,
+              "nombre": "María González",
+              "tipoServicio": "CAJA",
+              "estado": "DISPONIBLE",
+              "modulo": 3,
+              "ticketsAtendidosHoy": 12,
+              "tiempoPromedioAtencion": 5.2,
+              "ultimaActividad": "2024-12-07T11:30:00"
+            },
+            {
+              "id": 2,
+              "nombre": "Carlos Rodríguez",
+              "tipoServicio": "PERSONAL_BANKER",
+              "estado": "OCUPADO",
+              "modulo": 5,
+              "ticketsAtendidosHoy": 8,
+              "tiempoPromedioAtencion": 12.8,
+              "ultimaActividad": "2024-12-07T11:45:00",
+              "ticketActual": "PB071203"
+            }
+          ]
+        },
+        "curl": "curl -X GET http://localhost:8080/api/admin/advisors"
+      },
+      "updateAdvisorStatus": {
+        "description": "Cambiar estado de asesor",
+        "method": "PUT",
+        "url": "/admin/advisors/{id}/status",
+        "pathParams": {
+          "id": 1
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "estado": "DESCANSO"
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "id": 1,
+            "nombre": "María González",
+            "tipoServicio": "CAJA",
+            "estado": "DESCANSO",
+            "modulo": 3,
+            "ultimaActividad": "2024-12-07T11:50:00"
+          }
+        },
+        "curl": "curl -X PUT http://localhost:8080/api/admin/advisors/1/status -H \"Content-Type: application/json\" -d '{\"estado\":\"DESCANSO\"}'"
+      },
+      "completeTicket": {
+        "description": "Completar un ticket",
+        "method": "POST",
+        "url": "/admin/tickets/{id}/complete",
+        "pathParams": {
+          "id": 1
+        },
+        "response": {
+          "status": 200,
+          "body": {
+            "id": 1,
+            "numero": "C071234",
+            "uuid": "550e8400-e29b-41d4-a716-446655440000",
+            "tipoServicio": "CAJA",
+            "estado": "COMPLETADO",
+            "posicionEnCola": 0,
+            "tiempoEstimadoMinutos": 0,
+            "createdAt": "2024-12-07T10:30:00",
+            "completedAt": "2024-12-07T10:38:00",
+            "tiempoAtencionMinutos": 8,
+            "advisorAsignado": {
+              "id": 1,
+              "nombre": "María González",
+              "modulo": 3
+            },
+            "telegramChatId": "1234567890"
+          }
+        },
+        "curl": "curl -X POST http://localhost:8080/api/admin/tickets/1/complete"
+      }
+    },
+    "errors": {
+      "validation": {
+        "description": "Error de validación",
+        "status": 400,
+        "body": {
+          "message": "Validation failed",
+          "status": 400,
+          "timestamp": "2024-12-07T11:50:00",
+          "errors": [
+            "tipoServicio: must not be null",
+            "telegramChatId: must match pattern ^[0-9]{10}$"
+          ]
+        }
+      },
+      "notFound": {
+        "description": "Recurso no encontrado",
+        "status": 404,
+        "body": {
+          "message": "Ticket not found with UUID: invalid-uuid",
+          "status": 404,
+          "timestamp": "2024-12-07T11:50:00",
+          "errors": []
+        }
+      },
+      "serverError": {
+        "description": "Error interno del servidor",
+        "status": 500,
+        "body": {
+          "message": "Internal server error",
+          "status": 500,
+          "timestamp": "2024-12-07T11:50:00",
+          "errors": []
+        }
+      }
+    }
+  },
+  "testScenarios": {
+    "completeFlow": {
+      "description": "Flujo completo de creación y procesamiento de ticket",
+      "steps": [
+        {
+          "step": 1,
+          "description": "Crear ticket",
+          "request": {
+            "method": "POST",
+            "url": "/tickets",
+            "body": {
+              "tipoServicio": "CAJA",
+              "telegramChatId": "1234567890"
+            }
+          },
+          "expectedStatus": 201,
+          "saveResponse": "ticketResponse"
+        },
+        {
+          "step": 2,
+          "description": "Consultar posición",
+          "request": {
+            "method": "GET",
+            "url": "/tickets/{{ticketResponse.numero}}/position"
+          },
+          "expectedStatus": 200
+        },
+        {
+          "step": 3,
+          "description": "Obtener ticket por UUID",
+          "request": {
+            "method": "GET",
+            "url": "/tickets/{{ticketResponse.uuid}}"
+          },
+          "expectedStatus": 200
+        },
+        {
+          "step": 4,
+          "description": "Completar ticket (admin)",
+          "request": {
+            "method": "POST",
+            "url": "/admin/tickets/{{ticketResponse.id}}/complete"
+          },
+          "expectedStatus": 200
+        }
+      ]
+    },
+    "loadTest": {
+      "description": "Test de carga - crear múltiples tickets",
+      "concurrent": 10,
+      "iterations": 100,
+      "request": {
+        "method": "POST",
+        "url": "/tickets",
+        "body": {
+          "tipoServicio": "CAJA",
+          "telegramChatId": "{{randomChatId}}"
+        }
+      },
+      "expectedStatus": 201,
+      "maxResponseTime": 2000
+    }
+  },
+  "environments": {
+    "development": {
+      "baseUrl": "http://localhost:8080/api",
+      "variables": {
+        "telegramChatId": "1234567890"
+      }
+    },
+    "staging": {
+      "baseUrl": "https://staging.ticketero.company.com/api",
+      "variables": {
+        "telegramChatId": "9876543210"
+      }
+    },
+    "production": {
+      "baseUrl": "https://ticketero.company.com/api",
+      "variables": {
+        "telegramChatId": "5555555555"
+      }
+    }
+  }
+}

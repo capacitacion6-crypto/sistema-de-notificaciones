@@ -1,0 +1,6 @@
+com\example\ticketero\exception\CustomExceptionsTest.class
+com\example\ticketero\service\TicketServiceTest.class
+com\example\ticketero\TicketeroApplicationTests.class
+com\example\ticketero\controller\TicketControllerTest.class
+com\example\ticketero\service\TelegramServiceTest.class
+com\example\ticketero\service\DashboardServiceTest.class

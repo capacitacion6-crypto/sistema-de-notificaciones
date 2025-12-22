@@ -1,7 +1,6 @@
+c:\Users\lance\Desktop\sistema-de-notificaciones\src\test\java\com\example\ticketero\exception\CustomExceptionsTest.java
 c:\Users\lance\Desktop\sistema-de-notificaciones\src\test\java\com\example\ticketero\TicketeroApplicationTests.java
-c:\Users\lance\Desktop\sistema-de-notificaciones\src\test\java\com\example\ticketero\scheduler\MessageSchedulerTest.java
-c:\Users\lance\Desktop\sistema-de-notificaciones\src\test\java\com\example\ticketero\controller\TicketControllerIntegrationTest.java
-c:\Users\lance\Desktop\sistema-de-notificaciones\src\test\java\com\example\ticketero\repository\TicketRepositoryTest.java
+c:\Users\lance\Desktop\sistema-de-notificaciones\src\test\java\com\example\ticketero\controller\TicketControllerTest.java
 c:\Users\lance\Desktop\sistema-de-notificaciones\src\test\java\com\example\ticketero\service\TicketServiceTest.java
 c:\Users\lance\Desktop\sistema-de-notificaciones\src\test\java\com\example\ticketero\service\DashboardServiceTest.java
 c:\Users\lance\Desktop\sistema-de-notificaciones\src\test\java\com\example\ticketero\service\TelegramServiceTest.java

@@ -180,10 +180,38 @@ docker build -t ticketero:latest .
 ### Deploy con Docker Compose
 ```bash
 # Configurar variables de producción
-cp .env.example .env.prod
+cp .env.prod.example .env.prod
+# Editar .env.prod con valores reales
 
-# Deploy
+# Deploy automático (Linux/Mac)
+./deploy-prod.sh
+
+# Deploy automático (Windows)
+deploy-prod.bat
+
+# Deploy manual
 docker-compose -f docker-compose.prod.yml up -d
+```
+
+### Monitoreo (Opcional)
+```bash
+# Levantar stack de monitoreo (Prometheus + Grafana)
+docker-compose -f docker-compose.monitoring.yml up -d
+
+# Acceder a Grafana: http://localhost:3000
+# Usuario: admin / Password: admin123
+```
+
+### Backup y Recuperación
+```bash
+# Backup manual
+./backup.sh manual
+
+# Backup diario (agregar a cron)
+./backup.sh daily
+
+# Restaurar desde backup
+docker exec -i ticketero-db psql -U dev -d ticketero < backup/ticketero_db_TIMESTAMP.sql
 ```
 
 ## 🐛 Troubleshooting
